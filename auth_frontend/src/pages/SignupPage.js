@@ -41,6 +41,7 @@ export default function SignupPage() {
     <main className="auth-page" aria-label="Sign up page">
       <section className="auth-card" role="region" aria-label="Sign up box">
         <h1 className="auth-title">Sign Up</h1>
+        <p className="auth-subtitle">Create your account in just a moment.</p>
 
         <form className="auth-form" onSubmit={onSubmit}>
           <div className="auth-field">

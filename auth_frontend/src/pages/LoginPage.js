@@ -34,6 +34,7 @@ export default function LoginPage() {
     <main className="auth-page" aria-label="Login page">
       <section className="auth-card" role="region" aria-label="Login box">
         <h1 className="auth-title">Login</h1>
+        <p className="auth-subtitle">Welcome back — sign in to continue.</p>
 
         <form className="auth-form" onSubmit={onSubmit}>
           <div className="auth-field">
