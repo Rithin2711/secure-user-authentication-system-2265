@@ -22,9 +22,12 @@ export default function LoginPage() {
     try {
       const data = await login({ email: email.trim(), password });
       persistAuth(data);
-      setMessage({ type: "success", text: "Logged in successfully." });
+      // Backend now returns message: "Login Successfull"
+      setMessage({ type: "success", text: data?.message || "Login Successfull" });
     } catch (err) {
-      setMessage({ type: "error", text: err?.message || "Login failed." });
+      // Backend returns 401 detail: "Login failed"
+      const msg = err?.message && String(err.message).trim() ? err.message : "Login failed";
+      setMessage({ type: "error", text: msg });
     } finally {
       setSubmitting(false);
     }
