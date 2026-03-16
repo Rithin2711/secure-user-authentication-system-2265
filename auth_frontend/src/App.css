@@ -29,6 +29,131 @@
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* Auth pages shell */
+.auth-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+}
+
+.auth-page {
+  width: 100%;
+  max-width: 440px;
+}
+
+.auth-card {
+  width: 100%;
+  background: #000000; /* requested black box */
+  color: #ffffff;
+  border-radius: 14px;
+  padding: 28px 24px;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+
+.auth-title {
+  margin: 0 0 16px 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.auth-input {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  padding: 12px 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.auth-input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.auth-input:focus {
+  border-color: rgba(97, 218, 251, 0.85);
+  box-shadow: 0 0 0 3px rgba(97, 218, 251, 0.18);
+}
+
+.auth-button {
+  margin-top: 6px;
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #000000;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.08s ease, opacity 0.2s ease;
+}
+
+.auth-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-button:active {
+  transform: translateY(1px);
+}
+
+.auth-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.auth-link {
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: underline;
+  font-size: 13px;
+}
+
+.auth-link:hover {
+  opacity: 0.9;
+}
+
+.auth-footer {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.auth-message {
+  margin: 8px 0 0 0;
+  font-size: 13px;
+}
+
+.auth-message.error {
+  color: #ffb4b4;
+}
+
+.auth-message.success {
+  color: #b7ffcc;
+}
+
 .App-logo {
   height: 40vmin;
   pointer-events: none;

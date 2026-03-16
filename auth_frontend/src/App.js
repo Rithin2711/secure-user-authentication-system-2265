@@ -1,47 +1,61 @@
-import React, { useState, useEffect } from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useEffect, useMemo, useState } from "react";
+import "./App.css";
+import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
+
+/**
+ * Simple, dependency-free routing to avoid adding react-router.
+ * Uses hash-based navigation: #/login and #/signup.
+ */
+function useHashRoute() {
+  const getRoute = () => {
+    const hash = window.location.hash || "#/login";
+    if (hash.startsWith("#/signup")) return "signup";
+    return "login";
+  };
+
+  const [route, setRoute] = useState(getRoute);
+
+  useEffect(() => {
+    const onChange = () => setRoute(getRoute());
+    window.addEventListener("hashchange", onChange);
+    return () => window.removeEventListener("hashchange", onChange);
+  }, []);
+
+  return route;
+}
 
 // PUBLIC_INTERFACE
 function App() {
-  const [theme, setTheme] = useState('light');
+  /** Keeps the existing template theme capability without forcing it into the auth UI. */
+  const [theme, setTheme] = useState("light");
+  const route = useHashRoute();
 
-  // Effect to apply theme to document element
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
   // PUBLIC_INTERFACE
   const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
   };
 
+  const content = useMemo(() => {
+    if (route === "signup") return <SignupPage />;
+    return <LoginPage />;
+  }, [route]);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-        </button>
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <p>
-          Current theme: <strong>{theme}</strong>
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="App auth-shell">
+      <button
+        className="theme-toggle"
+        onClick={toggleTheme}
+        aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+      >
+        {theme === "light" ? "🌙 Dark" : "☀️ Light"}
+      </button>
+
+      {content}
     </div>
   );
 }
