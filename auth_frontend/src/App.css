@@ -159,6 +159,19 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
+/* Ensure dropdown text (selected value + options list) is always readable.
+   Some browsers (notably on certain OS themes) render <option> text using default colors,
+   which can become invisible against our glassmorphism backgrounds. */
+select.auth-input {
+  color: var(--auth-text);
+}
+
+/* Options are painted in the OS/native dropdown surface; use a solid readable scheme. */
+select.auth-input option {
+  color: #111827; /* dark text */
+  background-color: #ffffff; /* light dropdown surface */
+}
+
 .auth-input::placeholder {
   color: rgba(255, 255, 255, 0.45);
 }
