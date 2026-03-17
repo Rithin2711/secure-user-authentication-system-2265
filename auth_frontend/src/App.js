@@ -2,15 +2,17 @@ import React, { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
+import UploadPage from "./pages/UploadPage";
 
 /**
  * Simple, dependency-free routing to avoid adding react-router.
- * Uses hash-based navigation: #/login and #/signup.
+ * Uses hash-based navigation: #/login, #/signup, and #/upload.
  */
 function useHashRoute() {
   const getRoute = () => {
     const hash = window.location.hash || "#/login";
     if (hash.startsWith("#/signup")) return "signup";
+    if (hash.startsWith("#/upload")) return "upload";
     return "login";
   };
 
@@ -42,6 +44,7 @@ function App() {
 
   const content = useMemo(() => {
     if (route === "signup") return <SignupPage />;
+    if (route === "upload") return <UploadPage />;
     return <LoginPage />;
   }, [route]);
 
