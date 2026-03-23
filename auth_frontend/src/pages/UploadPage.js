@@ -372,184 +372,221 @@ export default function UploadPage() {
 
   return (
     <main className="auth-page auth-page--wide" aria-label="Upload page">
-      <section className="auth-card auth-card--flat" role="region" aria-label="Upload">
-        <div className="auth-wide-content">
-          {/* Dashboard-style top bar */}
+      {/* Dashboard-style top bar (pinned flush to top of viewport) */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 50,
+
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+
+          /* Make it look like a true app header (no rounded outer corners since it touches viewport edge). */
+          padding: "12px 18px",
+          borderBottom: "1px solid rgba(255,255,255,0.10)",
+
+          /* Theme-blended surface: slightly richer than the old neutral glass, matching the indigo/violet canvas. */
+          background:
+            "linear-gradient(90deg, rgba(75, 62, 120, 0.52), rgba(59, 57, 112, 0.38), rgba(10, 26, 47, 0.26))",
+          boxShadow: "0 14px 40px rgba(0,0,0,0.30)",
+          backdropFilter: "blur(14px)",
+          WebkitBackdropFilter: "blur(14px)",
+        }}
+        role="banner"
+        aria-label="Dashboard header"
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            minWidth: 0,
+          }}
+        >
           <div
+            aria-hidden="true"
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-              marginBottom: 14,
-              padding: "10px 10px",
-              borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.14)",
-              background: "rgba(255,255,255,0.06)",
-              boxShadow: "0 10px 26px rgba(0,0,0,0.18)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
+              width: 34,
+              height: 34,
+              display: "grid",
+              placeItems: "center",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.16)",
+              background: "rgba(0,0,0,0.10)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+              flex: "0 0 auto",
+              fontSize: 15,
+              lineHeight: 1,
             }}
-            role="banner"
-            aria-label="Dashboard header"
+            title="Tool"
           >
+            ⬆︎
+          </div>
+
+          <div style={{ minWidth: 0 }}>
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                minWidth: 0,
+                fontSize: 14,
+                fontWeight: 950,
+                letterSpacing: "-0.02em",
+                color: "rgba(255,255,255,0.92)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: "50vw",
+              }}
+              title="Tool Name"
+            >
+              Tool Name
+            </div>
+            <div style={{ marginTop: 2, fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Upload workspace</div>
+          </div>
+        </div>
+
+        <div ref={userMenuWrapRef} style={{ position: "relative", display: "inline-flex" }}>
+          <button
+            type="button"
+            onClick={() => setIsUserMenuOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={isUserMenuOpen}
+            aria-label="Open user menu"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.16)",
+              background: "rgba(0,0,0,0.12)",
+              color: "rgba(255,255,255,0.92)",
+              padding: "9px 12px",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 900,
+              letterSpacing: "-0.01em",
+              maxWidth: 280,
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+            }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                width: 28,
+                height: 28,
+                display: "grid",
+                placeItems: "center",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.16)",
+                background: "rgba(255,255,255,0.06)",
+                flex: "0 0 auto",
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+              title="User"
+            >
+              👤
+            </span>
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                maxWidth: 190,
+              }}
+              title={displayName}
+            >
+              {displayName}
+            </span>
+            <span aria-hidden="true" style={{ opacity: 0.9 }}>
+              ▾
+            </span>
+          </button>
+
+          {isUserMenuOpen ? (
+            <div
+              role="menu"
+              aria-label="User menu"
+              style={{
+                position: "absolute",
+                right: 0,
+                top: "calc(100% + 10px)",
+                minWidth: 220,
+                borderRadius: 14,
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(16, 24, 39, 0.78)",
+                boxShadow: "0 18px 60px rgba(0, 0, 0, 0.45)",
+                padding: 8,
+                zIndex: 60,
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
               }}
             >
               <div
                 style={{
-                  fontSize: 14,
-                  fontWeight: 900,
-                  letterSpacing: "-0.02em",
-                  color: "rgba(255,255,255,0.92)",
-                  whiteSpace: "nowrap",
+                  padding: "8px 10px",
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.72)",
+                  borderBottom: "1px solid rgba(255,255,255,0.10)",
+                  marginBottom: 6,
                 }}
               >
-                Tool Name
+                Signed in as <span style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950 }}>{displayName}</span>
               </div>
-            </div>
 
-            <div ref={userMenuWrapRef} style={{ position: "relative", display: "inline-flex" }}>
               <button
                 type="button"
-                onClick={() => setIsUserMenuOpen((v) => !v)}
-                aria-haspopup="menu"
-                aria-expanded={isUserMenuOpen}
-                aria-label="Open user menu"
+                role="menuitem"
+                onClick={onOpenSettings}
                 style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 10,
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.18)",
-                  background: "rgba(255,255,255,0.06)",
+                  width: "100%",
+                  textAlign: "left",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.16)",
+                  background: "rgba(255,255,255,0.08)",
                   color: "rgba(255,255,255,0.92)",
-                  padding: "10px 12px",
+                  padding: "10px 10px",
                   cursor: "pointer",
                   fontSize: 13,
                   fontWeight: 850,
                   letterSpacing: "-0.01em",
-                  maxWidth: 280,
+                  marginBottom: 8,
                 }}
               >
-                <span
-                  aria-hidden="true"
-                  style={{
-                    width: 28,
-                    height: 28,
-                    display: "grid",
-                    placeItems: "center",
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.18)",
-                    background: "rgba(0,0,0,0.10)",
-                    flex: "0 0 auto",
-                    fontSize: 14,
-                    lineHeight: 1,
-                  }}
-                  title="User"
-                >
-                  👤
-                </span>
-                <span
-                  style={{
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    maxWidth: 190,
-                  }}
-                  title={displayName}
-                >
-                  {displayName}
-                </span>
-                <span aria-hidden="true" style={{ opacity: 0.9 }}>
-                  ▾
-                </span>
+                Settings
               </button>
 
-              {isUserMenuOpen ? (
-                <div
-                  role="menu"
-                  aria-label="User menu"
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    top: "calc(100% + 10px)",
-                    minWidth: 220,
-                    borderRadius: 14,
-                    border: "1px solid rgba(255,255,255,0.18)",
-                    background: "rgba(16, 24, 39, 0.75)",
-                    boxShadow: "0 18px 60px rgba(0, 0, 0, 0.45)",
-                    padding: 8,
-                    zIndex: 20,
-                    backdropFilter: "blur(12px)",
-                    WebkitBackdropFilter: "blur(12px)",
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: "8px 10px",
-                      fontSize: 12,
-                      color: "rgba(255,255,255,0.72)",
-                      borderBottom: "1px solid rgba(255,255,255,0.10)",
-                      marginBottom: 6,
-                    }}
-                  >
-                    Signed in as{" "}
-                    <span style={{ color: "rgba(255,255,255,0.92)", fontWeight: 900 }}>{displayName}</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={onOpenSettings}
-                    style={{
-                      width: "100%",
-                      textAlign: "left",
-                      borderRadius: 12,
-                      border: "1px solid rgba(255,255,255,0.16)",
-                      background: "rgba(255,255,255,0.08)",
-                      color: "rgba(255,255,255,0.92)",
-                      padding: "10px 10px",
-                      cursor: "pointer",
-                      fontSize: 13,
-                      fontWeight: 850,
-                      letterSpacing: "-0.01em",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Settings
-                  </button>
-
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={onLogout}
-                    style={{
-                      width: "100%",
-                      textAlign: "left",
-                      borderRadius: 12,
-                      border: "1px solid rgba(239,68,68,0.35)",
-                      background: "rgba(239,68,68,0.12)",
-                      color: "rgba(255,255,255,0.92)",
-                      padding: "10px 10px",
-                      cursor: "pointer",
-                      fontSize: 13,
-                      fontWeight: 900,
-                      letterSpacing: "-0.01em",
-                    }}
-                  >
-                    Logout
-                  </button>
-                </div>
-              ) : null}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={onLogout}
+                style={{
+                  width: "100%",
+                  textAlign: "left",
+                  borderRadius: 12,
+                  border: "1px solid rgba(239,68,68,0.35)",
+                  background: "rgba(239,68,68,0.12)",
+                  color: "rgba(255,255,255,0.92)",
+                  padding: "10px 10px",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 950,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                Logout
+              </button>
             </div>
-          </div>
+          ) : null}
+        </div>
+      </div>
 
+      <section className="auth-card auth-card--flat" role="region" aria-label="Upload">
+        {/* Add top spacing so content starts below the fixed dashboard bar (no overlap). */}
+        <div className="auth-wide-content" style={{ paddingTop: 86 }}>
           <h1 className="auth-title">Upload</h1>
           <p className="auth-subtitle">Choose a document type and provide the content to upload.</p>
 
