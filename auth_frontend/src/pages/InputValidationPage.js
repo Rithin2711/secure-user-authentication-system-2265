@@ -7,7 +7,7 @@ import { intakeAgentSample, requiredFieldPaths } from "../sampleData/intakeAgent
  * Responsibilities:
  * - Display the extracted intake-agent JSON (key/value output).
  * - Validate missing/empty required fields (simple, deterministic rules).
- * - Provide a HITL-style loop: show error messages and allow user to re-upload.
+ * - Provide a UI-only HITL loop: allow user to fill missing fields and preview the updated JSON.
  */
 
 /**
@@ -22,6 +22,30 @@ function getValueAtPath(obj, path) {
     else return undefined;
   }
   return cur;
+}
+
+/**
+ * Sets a nested value on an object using a dot-separated path (e.g. "a.b.c").
+ * Mutates the given object (expects a clone at the call site).
+ */
+function setValueAtPath(obj, path, value) {
+  if (!obj || typeof obj !== "object") return;
+  const parts = String(path || "").split(".").filter(Boolean);
+  if (parts.length === 0) return;
+
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i += 1) {
+    const p = parts[i];
+    const next = cur[p];
+
+    // Create intermediate objects as needed so the path always becomes writable.
+    if (!next || typeof next !== "object" || Array.isArray(next)) {
+      cur[p] = {};
+    }
+    cur = cur[p];
+  }
+
+  cur[parts[parts.length - 1]] = value;
 }
 
 /**
@@ -92,19 +116,49 @@ export default function InputValidationPage() {
     return intakeAgentSample;
   }, []);
 
+  /**
+   * UI-only "merged" JSON:
+   * - Start with the extracted JSON
+   * - Overwrite any required paths the user filled in via the missing-field inputs
+   *
+   * This keeps the theme and JSON display intact, while making the JSON preview reflect HITL inputs.
+   */
+  const mergedExtracted = useMemo(() => {
+    const clone = structuredClone ? structuredClone(extracted) : JSON.parse(JSON.stringify(extracted));
+
+    for (const [path, rawValue] of Object.entries(missingFieldInputs)) {
+      // Treat empty input as "not provided" (so it will still be considered missing).
+      const v = typeof rawValue === "string" ? rawValue : String(rawValue);
+
+      // Preserve number-like required fields by casting when the original value is a number.
+      const existing = getValueAtPath(extracted, path);
+      let nextValue = v;
+
+      if (typeof existing === "number") {
+        const n = Number(v);
+        // If it's not a valid number, keep the raw string so the user can see what they typed.
+        nextValue = Number.isFinite(n) ? n : v;
+      }
+
+      setValueAtPath(clone, path, nextValue);
+    }
+
+    return clone;
+  }, [extracted, missingFieldInputs]);
+
   const missingRequired = useMemo(() => {
     return requiredFieldPaths
-      .map((path) => ({ path, value: getValueAtPath(extracted, path) }))
+      .map((path) => ({ path, value: getValueAtPath(mergedExtracted, path) }))
       .filter(({ value }) => isEmptyValue(value));
-  }, [extracted]);
+  }, [mergedExtracted]);
 
   const hasErrors = missingRequired.length > 0;
 
   const flattenedEntries = useMemo(() => {
-    const pairs = flattenObject(extracted);
+    const pairs = flattenObject(mergedExtracted);
     // Stable sorting keeps UI predictable.
     return pairs.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
-  }, [extracted]);
+  }, [mergedExtracted]);
 
   const onReupload = () => {
     // Clear previous extracted payload so the next run is "fresh".
@@ -126,10 +180,11 @@ export default function InputValidationPage() {
         <div className="auth-wide-content">
           <h1 className="auth-title">Input validation</h1>
           <p className="auth-subtitle">
-            Review the extracted fields. If any required fields are empty, a human-in-the-loop (HITL) re-upload is required.
+            Review the extracted fields. If any required fields are empty, you can provide missing values below to update the JSON preview.
           </p>
 
-          {/* HITL error panel */}
+          {/* HITL error panel
+              Requirement: hide this panel once all missing fields are filled. */}
           {hasErrors ? (
             <div
               role="alert"
@@ -143,7 +198,7 @@ export default function InputValidationPage() {
             >
               <div style={{ fontWeight: 850, letterSpacing: "-0.01em" }}>Action required</div>
               <div style={{ marginTop: 6, color: "rgba(255,255,255,0.86)", fontSize: 13, lineHeight: 1.45 }}>
-                The following required fields are missing or empty. Please re-upload and ensure these fields are provided:
+                The following required fields are missing or empty. You can fill them below (UI-only) or re-upload.
               </div>
 
               <ul style={{ margin: "10px 0 0 18px", padding: 0, color: "rgba(255,255,255,0.92)", fontSize: 13 }}>
@@ -202,7 +257,6 @@ export default function InputValidationPage() {
                     Provide missing fields
                   </div>
 
-
                   <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
                     {missingRequired.map(({ path }) => {
                       const label = `${humanizePath(path)}:`;
@@ -228,23 +282,7 @@ export default function InputValidationPage() {
                 </div>
               ) : null}
             </div>
-          ) : (
-            <div
-              role="status"
-              style={{
-                marginTop: 14,
-                padding: "12px 12px",
-                borderRadius: 14,
-                border: "1px solid rgba(6,182,212,0.35)",
-                background: "rgba(6,182,212,0.10)",
-              }}
-            >
-              <div style={{ fontWeight: 850, letterSpacing: "-0.01em" }}>Validation passed</div>
-              <div style={{ marginTop: 6, color: "rgba(255,255,255,0.86)", fontSize: 13, lineHeight: 1.45 }}>
-                All required fields are present.
-              </div>
-            </div>
-          )}
+          ) : null}
 
           {/* Collapsible extracted JSON */}
           <div
@@ -337,7 +375,7 @@ export default function InputValidationPage() {
                           </div>
                           {isMissing ? (
                             <div style={{ marginTop: 4, fontSize: 12, color: "rgba(255,210,210,0.95)", fontWeight: 750 }}>
-                              Empty — please re-upload with this field provided.
+                              Empty — please provide a value above (UI-only) or re-upload with this field provided.
                             </div>
                           ) : null}
                         </div>
@@ -364,8 +402,7 @@ export default function InputValidationPage() {
                 </div>
 
                 <p className="auth-subtitle" style={{ marginTop: 12 }}>
-                  UI-only preview. This page currently reads extracted JSON from session storage (set by Upload) or falls back to the sample
-                  intake-agent output.
+                  UI-only preview. Missing-field inputs overwrite the extracted JSON in-memory so you can see the updated values immediately.
                 </p>
               </div>
             ) : null}
