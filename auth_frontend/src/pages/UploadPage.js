@@ -4,10 +4,11 @@ import { intakeAgentSample } from "../sampleData/intakeAgentSample";
 /**
  * Upload page (UI-only).
  *
- * Updated behavior per request:
- * - On clicking Submit, show an "Orchestrator" view with 4 horizontally arranged agent blocks.
- * - Clicking a block navigates to a separate page.
- * - Only "Ingestion" navigation is functional for now; other blocks are placeholders.
+ * Update:
+ * - Remove the Orchestrator UI (the horizontally arranged agent blocks) while keeping:
+ *   - the existing upload flow & validation,
+ *   - the post-submit behavior (disable inputs + persist sample extracted JSON),
+ *   - and the overall styling/layout.
  *
  * Note: This is UI-only and uses sample extracted JSON (intakeAgentSample).
  */
@@ -22,143 +23,6 @@ function getDisplayUserName() {
   return "User";
 }
 
-/**
- * Small, clickable agent card rendered inside the horizontal Orchestrator row.
- */
-function AgentBlock({ title, subtitle, status = "idle", enabled, onClick }) {
-  const statusStyles = useMemo(() => {
-    const base = {
-      border: "1px solid rgba(255,255,255,0.14)",
-      bg: "rgba(255,255,255,0.06)",
-      dot: "rgba(255,255,255,0.65)",
-      label: "Idle",
-    };
-
-    if (status === "running") {
-      return {
-        ...base,
-        border: "1px solid rgba(59,130,246,0.32)",
-        bg: "linear-gradient(180deg, rgba(59,130,246,0.16), rgba(6,182,212,0.08))",
-        dot: "rgba(59,130,246,0.95)",
-        label: "Running",
-      };
-    }
-    if (status === "success") {
-      return {
-        ...base,
-        border: "1px solid rgba(34,197,94,0.28)",
-        bg: "linear-gradient(180deg, rgba(34,197,94,0.14), rgba(255,255,255,0.04))",
-        dot: "rgba(34,197,94,0.95)",
-        label: "Complete",
-      };
-    }
-    if (status === "warning") {
-      return {
-        ...base,
-        border: "1px solid rgba(245,158,11,0.30)",
-        bg: "linear-gradient(180deg, rgba(245,158,11,0.14), rgba(255,255,255,0.04))",
-        dot: "rgba(245,158,11,0.95)",
-        label: "Attention",
-      };
-    }
-    if (status === "error") {
-      return {
-        ...base,
-        border: "1px solid rgba(239,68,68,0.34)",
-        bg: "linear-gradient(180deg, rgba(239,68,68,0.16), rgba(255,255,255,0.04))",
-        dot: "rgba(239,68,68,0.95)",
-        label: "Error",
-      };
-    }
-    return base;
-  }, [status]);
-
-  return (
-    <button
-      type="button"
-      onClick={enabled ? onClick : undefined}
-      disabled={!enabled}
-      aria-label={`${title} agent`}
-      style={{
-        textAlign: "left",
-        cursor: enabled ? "pointer" : "not-allowed",
-        opacity: enabled ? 1 : 0.65,
-
-        width: "100%",
-        minWidth: 220,
-
-        borderRadius: 16,
-        border: statusStyles.border,
-        background: statusStyles.bg,
-        boxShadow: "0 10px 28px rgba(0,0,0,0.20)",
-
-        padding: "14px 14px",
-        color: "rgba(255,255,255,0.92)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-          <span
-            aria-hidden="true"
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 999,
-              background: statusStyles.dot,
-              boxShadow: `0 0 0 4px rgba(255,255,255,0.06), 0 0 24px ${statusStyles.dot}`,
-              flex: "0 0 auto",
-            }}
-          />
-          <div style={{ fontWeight: 950, letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {title}
-          </div>
-        </div>
-
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 950,
-            letterSpacing: "-0.01em",
-            padding: "4px 8px",
-            borderRadius: 999,
-            border: "1px solid rgba(255,255,255,0.14)",
-            background: "rgba(0,0,0,0.12)",
-            color: "rgba(255,255,255,0.78)",
-            flex: "0 0 auto",
-          }}
-        >
-          {statusStyles.label}
-        </span>
-      </div>
-
-      {subtitle ? (
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.68)", marginTop: 8, lineHeight: 1.35 }}>{subtitle}</div>
-      ) : null}
-
-      <div style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>{enabled ? "Click to view output" : "Coming soon"}</div>
-        <span
-          aria-hidden="true"
-          style={{
-            width: 30,
-            height: 30,
-            display: "grid",
-            placeItems: "center",
-            borderRadius: 999,
-            border: "1px solid rgba(255,255,255,0.14)",
-            background: "rgba(0,0,0,0.12)",
-            color: "rgba(255,255,255,0.78)",
-            flex: "0 0 auto",
-          }}
-          title={enabled ? "Open" : "Disabled"}
-        >
-          →
-        </span>
-      </div>
-    </button>
-  );
-}
-
 // PUBLIC_INTERFACE
 export default function UploadPage() {
   const [docType, setDocType] = useState("excel"); // excel | pdf | email
@@ -169,7 +33,7 @@ export default function UploadPage() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuWrapRef = useRef(null);
 
-  // Orchestrator view state
+  // Post-submit state: keep existing behavior (disable form + show a simple post-submit footer/action)
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const isFileType = docType === "excel" || docType === "pdf";
@@ -195,7 +59,7 @@ export default function UploadPage() {
     setFile(null);
     setEmailContents("");
 
-    // Reset orchestrator UI
+    // Reset post-submit UI
     setHasSubmitted(false);
 
     // Clear any previously "extracted" results (UI-only).
@@ -225,10 +89,10 @@ export default function UploadPage() {
       return;
     }
 
-    // UI-only: store the intake-agent extracted JSON (used by ingestion output page).
+    // UI-only: store the intake-agent extracted JSON (used by other pages).
     sessionStorage.setItem("intake_agent_extracted_json", JSON.stringify(intakeAgentSample));
 
-    // Show orchestrator view.
+    // Keep existing behavior: stay on page + disable inputs after submit.
     setHasSubmitted(true);
   };
 
@@ -549,7 +413,7 @@ export default function UploadPage() {
               {hasSubmitted ? "Submitted" : "Submit"}
             </button>
 
-            {/* Orchestrator view (post-submit) */}
+            {/* Post-submit: keep a minimal completion panel and allow resetting the flow */}
             {hasSubmitted ? (
               <div style={{ marginTop: 16 }}>
                 <div
@@ -563,10 +427,9 @@ export default function UploadPage() {
                 >
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                     <div>
-                      <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>Orchestrator</div>
+                      <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>Submitted</div>
                       <div style={{ fontSize: 12, color: "rgba(255,255,255,0.68)", marginTop: 4 }}>
-                        Click an agent to view its output. Only{" "}
-                        <span style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950 }}>Ingestion</span> is wired right now.
+                        Your upload has been captured (UI-only). You can start over to upload another document.
                       </div>
                     </div>
 
@@ -587,34 +450,6 @@ export default function UploadPage() {
                     </button>
                   </div>
                 </div>
-
-                {/* 4 horizontally arranged blocks */}
-                <div
-                  style={{
-                    marginTop: 12,
-                    display: "grid",
-                    gridTemplateColumns: "repeat(4, minmax(220px, 1fr))",
-                    gap: 12,
-                    alignItems: "stretch",
-                  }}
-                >
-                  <AgentBlock
-                    title="Ingestion"
-                    subtitle="Extract + basic required-field visibility (functional)"
-                    status="success"
-                    enabled
-                    onClick={() => {
-                      window.location.hash = "#/agent/ingestion";
-                    }}
-                  />
-                  <AgentBlock title="Validation" subtitle="Rules + checks beyond ingestion (placeholder)" status="idle" enabled={false} />
-                  <AgentBlock title="Pricing" subtitle="Compute pricing from extracted + validated input (placeholder)" status="idle" enabled={false} />
-                  <AgentBlock title="Inventory" subtitle="Resolve inventory availability + recommendations (placeholder)" status="idle" enabled={false} />
-                </div>
-
-                <p className="auth-subtitle" style={{ marginTop: 10 }}>
-                  Note: Output pages are UI-only for now. Ingestion reads the sample payload stored during Submit.
-                </p>
               </div>
             ) : null}
           </form>
