@@ -905,7 +905,7 @@ export default function UploadPage() {
                 ) : null}
               </div>
 
-              {/* Newly requested: reveal a collapsed "Validation" block after clicking Proceed to Validation. */}
+              {/* Collapsed "Validation" block must be OUTSIDE the inline Input validation panel, directly below it. */}
               {showValidationBlock ? (
                 <div
                   style={{
