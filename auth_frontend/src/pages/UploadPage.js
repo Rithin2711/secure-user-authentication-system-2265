@@ -691,8 +691,8 @@ export default function UploadPage() {
                     }}
                   />
                   <AgentBlock title="Validation" subtitle="Rules + checks beyond ingestion (placeholder)" status="idle" enabled={false} />
-                  <AgentBlock title="Pricing" subtitle="Compute pricing from extracted + validated input (placeholder)" status="idle" enabled={false} />
                   <AgentBlock title="Inventory" subtitle="Resolve inventory availability + recommendations (placeholder)" status="idle" enabled={false} />
+                  <AgentBlock title="Pricing" subtitle="Compute pricing from extracted + validated input (placeholder)" status="idle" enabled={false} />
                 </div>
 
                 <p className="auth-subtitle" style={{ marginTop: 10 }}>
