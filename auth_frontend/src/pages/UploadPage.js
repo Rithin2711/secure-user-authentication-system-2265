@@ -63,65 +63,67 @@ export default function UploadPage() {
   };
 
   return (
-    <main className="auth-page" aria-label="Upload page">
-      <section className="auth-card" role="region" aria-label="Upload box">
-        <h1 className="auth-title">Upload</h1>
-        <p className="auth-subtitle">Choose a document type and provide the content to upload.</p>
+    <main className="auth-page auth-page--wide" aria-label="Upload page">
+      <section className="auth-card auth-card--flat" role="region" aria-label="Upload">
+        <div className="auth-wide-content">
+          <h1 className="auth-title">Upload</h1>
+          <p className="auth-subtitle">Choose a document type and provide the content to upload.</p>
 
-        <form className="auth-form" onSubmit={onSubmit}>
-          <div className="auth-field">
-            <label htmlFor="upload-type">Document format</label>
-            <select id="upload-type" className="auth-input" value={docType} onChange={onChangeType}>
-              <option value="excel">Excel</option>
-              <option value="pdf">PDF</option>
-              <option value="email">Email</option>
-            </select>
-            <p className="auth-subtitle" style={{ marginTop: 8 }}>
-              {helperText}
-            </p>
-          </div>
-
-          {isFileType ? (
+          <form className="auth-form" onSubmit={onSubmit}>
             <div className="auth-field">
-              <label htmlFor="upload-file">Choose file</label>
-              <input
-                id="upload-file"
-                className="auth-input"
-                type="file"
-                accept={accept}
-                onChange={(e) => setFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
-              />
-              {file ? (
-                <p className="auth-subtitle" style={{ marginTop: 8 }}>
-                  Selected: <span style={{ color: "rgba(255,255,255,0.92)" }}>{file.name}</span>
-                </p>
-              ) : null}
+              <label htmlFor="upload-type">Document format</label>
+              <select id="upload-type" className="auth-input" value={docType} onChange={onChangeType}>
+                <option value="excel">Excel</option>
+                <option value="pdf">PDF</option>
+                <option value="email">Email</option>
+              </select>
+              <p className="auth-subtitle" style={{ marginTop: 8 }}>
+                {helperText}
+              </p>
             </div>
-          ) : (
-            <div className="auth-field">
-              <label htmlFor="upload-email-contents">Email contents</label>
-              <textarea
-                id="upload-email-contents"
-                className="auth-input"
-                placeholder="Paste email contents here..."
-                value={emailContents}
-                onChange={(e) => setEmailContents(e.target.value)}
-                rows={8}
-                style={{ resize: "vertical" }}
-              />
+
+            {isFileType ? (
+              <div className="auth-field">
+                <label htmlFor="upload-file">Choose file</label>
+                <input
+                  id="upload-file"
+                  className="auth-input"
+                  type="file"
+                  accept={accept}
+                  onChange={(e) => setFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
+                />
+                {file ? (
+                  <p className="auth-subtitle" style={{ marginTop: 8 }}>
+                    Selected: <span style={{ color: "rgba(255,255,255,0.92)" }}>{file.name}</span>
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <div className="auth-field">
+                <label htmlFor="upload-email-contents">Email contents</label>
+                <textarea
+                  id="upload-email-contents"
+                  className="auth-input"
+                  placeholder="Paste email contents here..."
+                  value={emailContents}
+                  onChange={(e) => setEmailContents(e.target.value)}
+                  rows={8}
+                  style={{ resize: "vertical" }}
+                />
+              </div>
+            )}
+
+            <button className="auth-button" type="submit">
+              Submit
+            </button>
+
+            <div className="auth-footer">
+              <a className="auth-link" href="#/login">
+                Back to Login
+              </a>
             </div>
-          )}
-
-          <button className="auth-button" type="submit">
-            Submit
-          </button>
-
-          <div className="auth-footer">
-            <a className="auth-link" href="#/login">
-              Back to Login
-            </a>
-          </div>
-        </form>
+          </form>
+        </div>
       </section>
     </main>
   );
