@@ -307,8 +307,9 @@ export default function UploadPage() {
       // ignore
     }
 
-    // Show orchestrator view.
-    setHasSubmitted(true);
+    // Navigate to results page (orchestrator selector + output area).
+    // Keep the existing sessionStorage payload wiring for Ingestion output.
+    window.location.hash = "#/orchestrator";
   };
 
   // PUBLIC_INTERFACE
@@ -647,7 +648,7 @@ export default function UploadPage() {
             )}
 
             <button className="auth-button" type="submit" disabled={hasSubmitted}>
-              {hasSubmitted ? "Submitted" : "Submit"}
+              {hasSubmitted ? "Submitted" : "Upload to Orchestrator"}
             </button>
 
             {/* Orchestrator view (post-submit) */}
