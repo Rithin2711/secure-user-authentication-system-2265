@@ -4,10 +4,11 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import UploadPage from "./pages/UploadPage";
 import InputValidationPage from "./pages/InputValidationPage";
+import IngestionOutputPage from "./pages/IngestionOutputPage";
 
 /**
  * Simple, dependency-free routing to avoid adding react-router.
- * Uses hash-based navigation: #/login, #/signup, #/upload, and #/input-validation.
+ * Uses hash-based navigation: #/login, #/signup, #/upload, #/input-validation, and #/agent/ingestion.
  */
 function useHashRoute() {
   const getRoute = () => {
@@ -15,6 +16,7 @@ function useHashRoute() {
     if (hash.startsWith("#/signup")) return "signup";
     if (hash.startsWith("#/upload")) return "upload";
     if (hash.startsWith("#/input-validation")) return "input-validation";
+    if (hash.startsWith("#/agent/ingestion")) return "agent-ingestion";
     return "login";
   };
 
@@ -45,6 +47,7 @@ function App() {
     if (route === "signup") return <SignupPage />;
     if (route === "upload") return <UploadPage />;
     if (route === "input-validation") return <InputValidationPage />;
+    if (route === "agent-ingestion") return <IngestionOutputPage />;
     return <LoginPage />;
   }, [route]);
 
