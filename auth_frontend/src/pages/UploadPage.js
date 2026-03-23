@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { intakeAgentSample } from "../sampleData/intakeAgentSample";
 
 /**
  * Upload page UI only.
@@ -34,6 +35,9 @@ export default function UploadPage() {
     // Reset previous inputs when switching modes to avoid accidental submission of stale data.
     setFile(null);
     setEmailContents("");
+
+    // Also clear any previously "extracted" results (UI-only) so Input Validation doesn't show stale data.
+    sessionStorage.removeItem("intake_agent_extracted_json");
   };
 
   const onSubmit = (e) => {
@@ -50,7 +54,11 @@ export default function UploadPage() {
       return;
     }
 
-    // Navigate to the new Input Validation results page (hash routing, no react-router).
+    // UI-only: store the intake-agent extracted JSON for the next page.
+    // In a future backend integration, this will be replaced by a real API call.
+    sessionStorage.setItem("intake_agent_extracted_json", JSON.stringify(intakeAgentSample));
+
+    // Navigate to the Input Validation page (hash routing, no react-router).
     window.location.hash = "#/input-validation";
   };
 
