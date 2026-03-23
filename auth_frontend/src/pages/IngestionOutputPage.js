@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { intakeAgentSample, requiredFieldPaths } from "../sampleData/intakeAgentSample";
 
 /**
@@ -185,26 +185,31 @@ export default function IngestionOutputPage() {
   });
 
   /**
-   * If missingRequired changes (e.g., different extraction loaded), keep draft state consistent.
-   * This is intentionally lightweight and UI-only.
+   * If missingRequired changes (e.g., after committing values with Enter, or a different extraction loaded),
+   * keep the draft state consistent and auto-collapse the missing-items panel when nothing is missing.
+   *
+   * Note: This must be an effect (not useMemo) because it performs state updates (side effects).
    */
-  useMemo(() => {
+  useEffect(() => {
     setMissingInputs((prev) => {
       const next = { ...prev };
+
+      // Ensure any newly-missing fields exist in draft state.
       for (const { path } of missingRequired) {
         if (!(path in next)) next[path] = "";
       }
-      // Remove any keys that are no longer missing
+
+      // Remove drafts for fields that are no longer missing (i.e., were committed).
       for (const k of Object.keys(next)) {
         if (!missingRequired.some((m) => m.path === k)) delete next[k];
       }
+
       return next;
     });
 
-    // Auto-collapse if no missing fields
+    // Auto-collapse the panel as soon as the last missing field is no longer missing.
     if (!hasMissing) setShowAddMissing(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMissing, missingRequired.map((m) => m.path).join("|")]);
+  }, [hasMissing, missingRequired]);
 
   // PUBLIC_INTERFACE
   function commitMissingField(path) {
