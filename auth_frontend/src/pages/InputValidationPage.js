@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { intakeAgentSample, requiredFieldPaths } from "../sampleData/intakeAgentSample";
 
 /**
@@ -8,6 +8,7 @@ import { intakeAgentSample, requiredFieldPaths } from "../sampleData/intakeAgent
  * - Display the extracted intake-agent JSON (key/value output).
  * - Validate missing/empty required fields (simple, deterministic rules).
  * - Provide a UI-only HITL loop: allow user to fill missing fields and preview the updated JSON.
+ * - Provide page-level controls: back navigation + user menu with sign-out.
  */
 
 /**
@@ -97,9 +98,27 @@ function flattenObject(obj, prefix = "") {
   return out;
 }
 
+/**
+ * Best-effort display name for the current user based on persisted auth info.
+ * Falls back to "User" if not available.
+ */
+function getDisplayUserName() {
+  try {
+    const email = localStorage.getItem("auth_email");
+    if (email && String(email).trim()) return String(email).trim();
+  } catch {
+    // ignore
+  }
+  return "User";
+}
+
 // PUBLIC_INTERFACE
 export default function InputValidationPage() {
   const [expanded, setExpanded] = useState(true);
+
+  // User menu state (top-right)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuWrapRef = useRef(null);
 
   // Missing-field UI state: reveal inputs on demand
   const [showMissingInputs, setShowMissingInputs] = useState(false);
@@ -198,13 +217,221 @@ export default function InputValidationPage() {
     });
   };
 
+  // PUBLIC_INTERFACE
+  const onBack = () => {
+    /** Navigate back to the previous page (best effort). Falls back to Upload page. */
+    try {
+      if (window.history.length > 1) {
+        window.history.back();
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    window.location.hash = "#/upload";
+  };
+
+  // PUBLIC_INTERFACE
+  const onSignOut = () => {
+    /** Clears stored auth info and returns user to the Login page. */
+    try {
+      localStorage.removeItem("auth_access_token");
+      localStorage.removeItem("auth_email");
+      localStorage.removeItem("auth_user_id");
+    } catch {
+      // ignore
+    }
+
+    // Also clear any transient extracted state so a new session starts clean.
+    try {
+      sessionStorage.removeItem("intake_agent_extracted_json");
+    } catch {
+      // ignore
+    }
+
+    setIsUserMenuOpen(false);
+    window.location.hash = "#/login";
+  };
+
+  // Close user menu on outside click / Escape for expected UX.
+  useEffect(() => {
+    if (!isUserMenuOpen) return undefined;
+
+    const onDocMouseDown = (e) => {
+      const wrap = userMenuWrapRef.current;
+      if (!wrap) return;
+      if (!wrap.contains(e.target)) setIsUserMenuOpen(false);
+    };
+
+    const onDocKeyDown = (e) => {
+      if (e.key === "Escape") setIsUserMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onDocKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onDocKeyDown);
+    };
+  }, [isUserMenuOpen]);
+
+  const displayName = useMemo(() => getDisplayUserName(), []);
+
   return (
     <main className="auth-page auth-page--wide" aria-label="Input validation page">
       <section className="auth-card auth-card--flat" role="region" aria-label="Input validation results">
         <div className="auth-wide-content">
+          {/* Top bar: Back (left) + User menu (right) */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 10,
+            }}
+          >
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Go back"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.92)",
+                padding: "10px 12px",
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: 800,
+                letterSpacing: "-0.01em",
+              }}
+            >
+              <span aria-hidden="true" style={{ fontSize: 14, lineHeight: 1 }}>
+                ←
+              </span>
+              Back
+            </button>
+
+            <div ref={userMenuWrapRef} style={{ position: "relative", display: "inline-flex" }}>
+              <button
+                type="button"
+                onClick={() => setIsUserMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={isUserMenuOpen}
+                aria-label="Open user menu"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 10,
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "rgba(255,255,255,0.92)",
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  letterSpacing: "-0.01em",
+                  maxWidth: 260,
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    display: "grid",
+                    placeItems: "center",
+                    borderRadius: 999,
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    background: "rgba(0,0,0,0.10)",
+                    flex: "0 0 auto",
+                    fontSize: 14,
+                  }}
+                  title="User"
+                >
+                  👤
+                </span>
+                <span
+                  style={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: 180,
+                  }}
+                  title={displayName}
+                >
+                  {displayName}
+                </span>
+                <span aria-hidden="true" style={{ opacity: 0.9 }}>
+                  ▾
+                </span>
+              </button>
+
+              {isUserMenuOpen ? (
+                <div
+                  role="menu"
+                  aria-label="User menu"
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "calc(100% + 10px)",
+                    minWidth: 220,
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    background: "rgba(16, 24, 39, 0.75)",
+                    boxShadow: "0 18px 60px rgba(0, 0, 0, 0.45)",
+                    padding: 8,
+                    zIndex: 10,
+                    backdropFilter: "blur(12px)",
+                    WebkitBackdropFilter: "blur(12px)",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "8px 10px",
+                      fontSize: 12,
+                      color: "rgba(255,255,255,0.72)",
+                      borderBottom: "1px solid rgba(255,255,255,0.10)",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Signed in as <span style={{ color: "rgba(255,255,255,0.92)", fontWeight: 800 }}>{displayName}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={onSignOut}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      borderRadius: 12,
+                      border: "1px solid rgba(239,68,68,0.35)",
+                      background: "rgba(239,68,68,0.12)",
+                      color: "rgba(255,255,255,0.92)",
+                      padding: "10px 10px",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      fontWeight: 850,
+                      letterSpacing: "-0.01em",
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
           <h1 className="auth-title">Input validation</h1>
           <p className="auth-subtitle">
-            Review the extracted fields. If any required fields are empty, you can provide missing values below to update the JSON preview.
+            Review the extracted fields. If any required fields are empty, you can provide missing values below to update the JSON
+            preview.
           </p>
 
           {/* HITL error panel
@@ -307,7 +534,8 @@ export default function InputValidationPage() {
                             }}
                           />
                           <div style={{ marginTop: 6, fontSize: 12, color: "rgba(255,255,255,0.62)" }}>
-                            Press <span style={{ color: "rgba(255,255,255,0.86)", fontWeight: 750 }}>Enter</span> to apply to the JSON preview.
+                            Press <span style={{ color: "rgba(255,255,255,0.86)", fontWeight: 750 }}>Enter</span> to apply to the
+                            JSON preview.
                           </div>
                         </div>
                       );
@@ -402,9 +630,7 @@ export default function InputValidationPage() {
                           <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 750 }}>
                             {key}
                             {isRequired ? (
-                              <span style={{ marginLeft: 8, fontWeight: 850, color: "rgba(255,255,255,0.78)" }}>
-                                • required
-                              </span>
+                              <span style={{ marginLeft: 8, fontWeight: 850, color: "rgba(255,255,255,0.78)" }}>• required</span>
                             ) : null}
                           </div>
                           {isMissing ? (
@@ -436,7 +662,8 @@ export default function InputValidationPage() {
                 </div>
 
                 <p className="auth-subtitle" style={{ marginTop: 12 }}>
-                  UI-only preview. Missing-field inputs overwrite the extracted JSON in-memory so you can see the updated values immediately.
+                  UI-only preview. Missing-field inputs overwrite the extracted JSON in-memory so you can see the updated values
+                  immediately.
                 </p>
               </div>
             ) : null}
