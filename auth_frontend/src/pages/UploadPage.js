@@ -648,7 +648,7 @@ export default function UploadPage() {
             )}
 
             <button className="auth-button" type="submit" disabled={hasSubmitted}>
-              {hasSubmitted ? "Submitted" : "Upload to Orchestrator"}
+              {hasSubmitted ? "Submitted" : "Upload"}
             </button>
 
             {/* Orchestrator view (post-submit) */}
