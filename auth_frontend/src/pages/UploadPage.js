@@ -288,11 +288,7 @@ export default function UploadPage() {
               <p className="auth-subtitle" style={{ marginTop: 8 }}>
                 {helperText}
               </p>
-              {hasSubmitted ? (
-                <p className="auth-subtitle" style={{ marginTop: 6, color: "rgba(255,255,255,0.78)" }}>
-                  To change document type, click <span style={{ fontWeight: 850 }}>Re-upload / try again</span> below.
-                </p>
-              ) : null}
+              {hasSubmitted ? null : null}
             </div>
 
             {isFileType ? (
