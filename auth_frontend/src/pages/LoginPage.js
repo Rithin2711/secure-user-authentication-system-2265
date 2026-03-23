@@ -70,13 +70,6 @@ export default function LoginPage() {
             {submitting ? "Logging in..." : "Login"}
           </button>
 
-          {/* Link requested: shown under the Login button and navigates to upload page */}
-          <div style={{ marginTop: 10, textAlign: "center" }}>
-            <a className="auth-link" href="#/upload">
-              Upload a document
-            </a>
-          </div>
-
           <div className="auth-row">
             <span />
             {/* No backend forgot-password flow defined in the work item; keep as UI link. */}
