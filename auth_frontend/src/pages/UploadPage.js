@@ -4,19 +4,15 @@ import { intakeAgentSample, requiredFieldPaths } from "../sampleData/intakeAgent
 /**
  * Upload page (UI only).
  *
- * Requested behavior:
- * - Add a dashboard-style top bar on the Upload page with:
- *   - Left: Tool Name (currently displayed as "Tool Name")
- *   - Right: user button + icon which opens a menu containing Settings and Logout.
- * - After Submit, DO NOT navigate away.
- * - Disable Submit and show an inline expandable “Input validation” section below it.
- * - The expandable section contains:
- *   - Missing-field detection
- *   - Inline missing-field entry UI (commit value on Enter)
- *   - Extracted content display (flattened key/value)
+ * Updated behavior per request:
+ * - On clicking Submit, show an "Orchestrator" view that contains 4 independent agent sections:
+ *   1) Ingestion (functional) — expands to show existing Input validation content.
+ *   2) Validation (placeholder, collapsed)
+ *   3) Pricing (placeholder, collapsed)
+ *   4) Inventory (placeholder, collapsed)
+ * - The extracted-content display (inside Ingestion) is rendered as an attractive table.
  *
- * Note: This is UI-only and uses sample extracted JSON (intakeAgentSample),
- * consistent with the existing template behavior.
+ * Note: This is UI-only and uses sample extracted JSON (intakeAgentSample).
  */
 
 /**
@@ -120,6 +116,170 @@ function getDisplayUserName() {
   return "User";
 }
 
+function getPreviewValue(value) {
+  if (value === undefined || value === null) return "—";
+  if (typeof value === "string" && value.trim() === "") return "—";
+  return String(value);
+}
+
+function getValueTypeLabel(value) {
+  if (value === undefined) return "undefined";
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
+}
+
+/**
+ * Independent agent card used by the Orchestrator view.
+ */
+function AgentSection({
+  title,
+  subtitle,
+  status = "idle", // idle | running | success | warning | error
+  expanded,
+  onToggle,
+  children,
+}) {
+  const statusStyles = useMemo(() => {
+    const base = {
+      border: "1px solid rgba(255,255,255,0.14)",
+      bg: "rgba(255,255,255,0.06)",
+      dot: "rgba(255,255,255,0.65)",
+      label: "Idle",
+    };
+
+    if (status === "running") {
+      return {
+        ...base,
+        border: "1px solid rgba(59,130,246,0.32)",
+        bg: "linear-gradient(180deg, rgba(59,130,246,0.16), rgba(6,182,212,0.08))",
+        dot: "rgba(59,130,246,0.95)",
+        label: "Running",
+      };
+    }
+    if (status === "success") {
+      return {
+        ...base,
+        border: "1px solid rgba(34,197,94,0.28)",
+        bg: "linear-gradient(180deg, rgba(34,197,94,0.14), rgba(255,255,255,0.04))",
+        dot: "rgba(34,197,94,0.95)",
+        label: "Complete",
+      };
+    }
+    if (status === "warning") {
+      return {
+        ...base,
+        border: "1px solid rgba(245,158,11,0.30)",
+        bg: "linear-gradient(180deg, rgba(245,158,11,0.14), rgba(255,255,255,0.04))",
+        dot: "rgba(245,158,11,0.95)",
+        label: "Attention",
+      };
+    }
+    if (status === "error") {
+      return {
+        ...base,
+        border: "1px solid rgba(239,68,68,0.34)",
+        bg: "linear-gradient(180deg, rgba(239,68,68,0.16), rgba(255,255,255,0.04))",
+        dot: "rgba(239,68,68,0.95)",
+        label: "Error",
+      };
+    }
+    return base;
+  }, [status]);
+
+  return (
+    <div
+      style={{
+        borderRadius: 16,
+        border: statusStyles.border,
+        background: statusStyles.bg,
+        boxShadow: "0 10px 28px rgba(0,0,0,0.22)",
+        overflow: "hidden",
+      }}
+      role="region"
+      aria-label={`${title} agent section`}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          padding: "14px 16px",
+          cursor: "pointer",
+          background: "transparent",
+          border: "none",
+          color: "rgba(255,255,255,0.92)",
+          textAlign: "left",
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span
+              aria-hidden="true"
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 999,
+                background: statusStyles.dot,
+                boxShadow: `0 0 0 4px rgba(255,255,255,0.06), 0 0 24px ${statusStyles.dot}`,
+                flex: "0 0 auto",
+              }}
+            />
+            <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>{title}</div>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 900,
+                letterSpacing: "-0.01em",
+                padding: "4px 8px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(0,0,0,0.12)",
+                color: "rgba(255,255,255,0.78)",
+              }}
+            >
+              {statusStyles.label}
+            </span>
+          </div>
+          {subtitle ? (
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.68)", marginTop: 4, paddingLeft: 20 }}>
+              {subtitle}
+            </div>
+          ) : null}
+        </div>
+
+        <span
+          aria-hidden="true"
+          style={{
+            width: 32,
+            height: 32,
+            display: "grid",
+            placeItems: "center",
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(0,0,0,0.12)",
+            transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 180ms cubic-bezier(0.2, 0, 0, 1)",
+            flex: "0 0 auto",
+            color: "rgba(255,255,255,0.78)",
+          }}
+        >
+          ▼
+        </span>
+      </button>
+
+      {expanded ? (
+        <div style={{ padding: "14px 16px 16px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>{children}</div>
+      ) : null}
+    </div>
+  );
+}
+
 // PUBLIC_INTERFACE
 export default function UploadPage() {
   const [docType, setDocType] = useState("excel"); // excel | pdf | email
@@ -130,15 +290,16 @@ export default function UploadPage() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuWrapRef = useRef(null);
 
-  // Submit / inline validation section state
+  // Orchestrator view state
   const [hasSubmitted, setHasSubmitted] = useState(false);
-  const [validationExpanded, setValidationExpanded] = useState(true);
 
-  // "Proceed to Validation" reveals a *new* Validation block (collapsed by default).
-  const [showValidationBlock, setShowValidationBlock] = useState(false);
-  const [validationBlockExpanded, setValidationBlockExpanded] = useState(false);
+  // Agent accordion states (independent)
+  const [ingestionExpanded, setIngestionExpanded] = useState(true);
+  const [validationExpanded, setValidationExpanded] = useState(false);
+  const [pricingExpanded, setPricingExpanded] = useState(false);
+  const [inventoryExpanded, setInventoryExpanded] = useState(false);
 
-  // Missing-field UI state: reveal inputs on demand (inside inline validation section)
+  // Missing-field UI state (inside Ingestion)
   const [showMissingInputs, setShowMissingInputs] = useState(false);
 
   /**
@@ -225,16 +386,16 @@ export default function UploadPage() {
     setFile(null);
     setEmailContents("");
 
-    // Reset inline validation UI
+    // Reset orchestrator + validation UI
     setHasSubmitted(false);
-    setValidationExpanded(true);
+    setIngestionExpanded(true);
+    setValidationExpanded(false);
+    setPricingExpanded(false);
+    setInventoryExpanded(false);
+
     setShowMissingInputs(false);
     setMissingFieldDrafts({});
     setMissingFieldInputs({});
-
-    // Reset newly introduced Validation block
-    setShowValidationBlock(false);
-    setValidationBlockExpanded(false);
 
     // Clear any previously "extracted" results (UI-only).
     sessionStorage.removeItem("intake_agent_extracted_json");
@@ -261,32 +422,23 @@ export default function UploadPage() {
     });
   };
 
-  const onReuploadTryAgain = () => {
+  const onStartOver = () => {
     // UI-only reset for another upload attempt.
     sessionStorage.removeItem("intake_agent_extracted_json");
 
     setHasSubmitted(false);
-    setValidationExpanded(true);
+    setIngestionExpanded(true);
+    setValidationExpanded(false);
+    setPricingExpanded(false);
+    setInventoryExpanded(false);
+
     setShowMissingInputs(false);
     setMissingFieldDrafts({});
     setMissingFieldInputs({});
 
-    // Also reset the follow-up Validation block.
-    setShowValidationBlock(false);
-    setValidationBlockExpanded(false);
-
     // Keep whatever docType user selected; reset its input field.
     setFile(null);
     setEmailContents("");
-  };
-
-  const onProceedToValidation = () => {
-    /**
-     * Reveal the new Validation block (collapsed by default).
-     * Note: Do not auto-expand yet, per requirements.
-     */
-    setShowValidationBlock(true);
-    setValidationBlockExpanded(false);
   };
 
   const onSubmit = (e) => {
@@ -308,9 +460,9 @@ export default function UploadPage() {
     // In a future backend integration, this will be replaced by a real API call.
     sessionStorage.setItem("intake_agent_extracted_json", JSON.stringify(intakeAgentSample));
 
-    // Disable submit and reveal inline Input validation.
+    // Show orchestrator view and open Ingestion agent by default.
     setHasSubmitted(true);
-    setValidationExpanded(true);
+    setIngestionExpanded(true);
   };
 
   // PUBLIC_INTERFACE
@@ -350,14 +502,14 @@ export default function UploadPage() {
   useEffect(() => {
     if (!isUserMenuOpen) return undefined;
 
-    const onDocMouseDown = (e) => {
+    const onDocMouseDown = (ev) => {
       const wrap = userMenuWrapRef.current;
       if (!wrap) return;
-      if (!wrap.contains(e.target)) setIsUserMenuOpen(false);
+      if (!wrap.contains(ev.target)) setIsUserMenuOpen(false);
     };
 
-    const onDocKeyDown = (e) => {
-      if (e.key === "Escape") setIsUserMenuOpen(false);
+    const onDocKeyDown = (ev) => {
+      if (ev.key === "Escape") setIsUserMenuOpen(false);
     };
 
     document.addEventListener("mousedown", onDocMouseDown);
@@ -369,6 +521,11 @@ export default function UploadPage() {
   }, [isUserMenuOpen]);
 
   const displayName = useMemo(() => getDisplayUserName(), []);
+
+  const ingestionStatus = useMemo(() => {
+    if (!hasSubmitted) return "idle";
+    return hasErrors ? "warning" : "success";
+  }, [hasSubmitted, hasErrors]);
 
   return (
     <main className="auth-page auth-page--wide" aria-label="Upload page">
@@ -386,11 +543,9 @@ export default function UploadPage() {
           justifyContent: "space-between",
           gap: 12,
 
-          /* Make it look like a true app header (no rounded outer corners since it touches viewport edge). */
           padding: "12px 18px",
           borderBottom: "1px solid rgba(255,255,255,0.10)",
 
-          /* Theme-blended surface: slightly richer than the old neutral glass, matching the indigo/violet canvas. */
           background:
             "linear-gradient(90deg, rgba(75, 62, 120, 0.52), rgba(59, 57, 112, 0.38), rgba(10, 26, 47, 0.26))",
           boxShadow: "0 14px 40px rgba(0,0,0,0.30)",
@@ -442,7 +597,7 @@ export default function UploadPage() {
               }}
               title="Tool Name"
             >
-              Tool Name
+              Agentic Ecosystem
             </div>
             <div style={{ marginTop: 2, fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Upload workspace</div>
           </div>
@@ -640,73 +795,54 @@ export default function UploadPage() {
               {hasSubmitted ? "Submitted" : "Submit"}
             </button>
 
-            {/* Inline expandable “Input validation” section (revealed post-submit) */}
+            {/* Orchestrator view (post-submit) */}
             {hasSubmitted ? (
-              <div
-                style={{
-                  marginTop: 14,
-                  borderRadius: 16,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "linear-gradient(180deg, rgba(75, 62, 120, 0.40), rgba(59, 57, 112, 0.28))",
-                  boxShadow: "0 10px 28px rgba(0,0,0,0.22)",
-                  overflow: "hidden",
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setValidationExpanded((v) => !v)}
-                  aria-expanded={validationExpanded}
-                  aria-controls="upload-inline-validation-panel"
+              <div style={{ marginTop: 16 }}>
+                <div
                   style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    padding: "14px 16px",
-                    cursor: "pointer",
-                    background: "transparent",
-                    border: "none",
-                    color: "rgba(255,255,255,0.92)",
-                    textAlign: "left",
+                    padding: "12px 14px",
+                    borderRadius: 16,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(255,255,255,0.06)",
+                    boxShadow: "0 10px 28px rgba(0,0,0,0.20)",
                   }}
                 >
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 850, letterSpacing: "-0.01em" }}>Input validation</div>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.68)", marginTop: 2 }}>
-                      Click to {validationExpanded ? "collapse" : "expand"}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                      <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>Orchestrator</div>
+                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.68)", marginTop: 4 }}>
+                        Four independent agents. Only <span style={{ color: "rgba(255,255,255,0.92)", fontWeight: 900 }}>Ingestion</span>{" "}
+                        is functional right now.
+                      </div>
                     </div>
+
+                    <button
+                      type="button"
+                      className="auth-button"
+                      onClick={onStartOver}
+                      style={{
+                        width: "auto",
+                        padding: "10px 14px",
+                        marginTop: 0,
+                        background: "rgba(255,255,255,0.10)",
+                        border: "1px solid rgba(255,255,255,0.16)",
+                        boxShadow: "0 10px 26px rgba(0, 0, 0, 0.18)",
+                      }}
+                    >
+                      Upload another file
+                    </button>
                   </div>
+                </div>
 
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      width: 32,
-                      height: 32,
-                      display: "grid",
-                      placeItems: "center",
-                      borderRadius: 999,
-                      border: "1px solid rgba(255,255,255,0.14)",
-                      background: "rgba(0,0,0,0.12)",
-                      transform: validationExpanded ? "rotate(180deg)" : "rotate(0deg)",
-                      transition: "transform 180ms cubic-bezier(0.2, 0, 0, 1)",
-                      flex: "0 0 auto",
-                      color: "rgba(255,255,255,0.78)",
-                    }}
+                <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
+                  <AgentSection
+                    title="Ingestion"
+                    subtitle="Extract + validate the input payload (functional)"
+                    status={ingestionStatus}
+                    expanded={ingestionExpanded}
+                    onToggle={() => setIngestionExpanded((v) => !v)}
                   >
-                    ▼
-                  </span>
-                </button>
-
-                {validationExpanded ? (
-                  <div
-                    id="upload-inline-validation-panel"
-                    style={{
-                      padding: "14px 16px 16px",
-                      borderTop: "1px solid rgba(255,255,255,0.08)",
-                    }}
-                  >
-                    {/* Missing fields panel (inline) */}
+                    {/* Missing fields panel */}
                     {hasErrors ? (
                       <div
                         role="alert"
@@ -732,21 +868,6 @@ export default function UploadPage() {
                         </ul>
 
                         <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                          <button
-                            type="button"
-                            className="auth-button"
-                            onClick={onReuploadTryAgain}
-                            style={{
-                              width: "auto",
-                              padding: "10px 14px",
-                              marginTop: 0,
-                              background: "linear-gradient(135deg, rgba(239,68,68,0.95), rgba(239,68,68,0.65))",
-                              boxShadow: "0 10px 26px rgba(239, 68, 68, 0.20)",
-                            }}
-                          >
-                            Re-upload / try again
-                          </button>
-
                           <button
                             type="button"
                             className="auth-button"
@@ -804,8 +925,8 @@ export default function UploadPage() {
                                       }}
                                     />
                                     <div style={{ marginTop: 6, fontSize: 12, color: "rgba(255,255,255,0.62)" }}>
-                                      Press <span style={{ color: "rgba(255,255,255,0.86)", fontWeight: 800 }}>Enter</span> to apply to
-                                      the preview.
+                                      Press <span style={{ color: "rgba(255,255,255,0.86)", fontWeight: 800 }}>Enter</span> to apply to the
+                                      preview.
                                     </div>
                                   </div>
                                 );
@@ -828,80 +949,216 @@ export default function UploadPage() {
                         <div style={{ marginTop: 6, color: "rgba(255,255,255,0.86)", fontSize: 13, lineHeight: 1.45 }}>
                           No missing required fields were detected in the extracted content (UI-only).
                         </div>
-
-                        <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                          <button
-                            type="button"
-                            className="auth-button"
-                            onClick={onReuploadTryAgain}
-                            style={{
-                              width: "auto",
-                              padding: "10px 14px",
-                              marginTop: 0,
-                              background: "linear-gradient(135deg, rgba(59,130,246,0.95), rgba(6,182,212,0.80))",
-                              boxShadow: "0 10px 26px rgba(59, 130, 246, 0.22)",
-                            }}
-                          >
-                            Re-upload / try again
-                          </button>
-                        </div>
                       </div>
                     )}
 
-                    {/* Extracted content (inline) */}
+                    {/* Extracted content table */}
                     <div style={{ marginTop: 12 }}>
-                      <div style={{ fontWeight: 850, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>Extracted content</div>
-                      <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
-                        {flattenedEntries.map(([key, value]) => {
-                          const isRequired = requiredFieldPaths.includes(key);
-                          const isMissing = isRequired && isEmptyValue(value);
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                        <div style={{ fontWeight: 850, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>Extracted content</div>
+                        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>{flattenedEntries.length} fields</div>
+                      </div>
 
-                          return (
-                            <div
-                              key={key}
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                gap: 12,
-                                padding: "10px 12px",
-                                borderRadius: 12,
-                                border: isMissing ? "1px solid rgba(239,68,68,0.45)" : "1px solid rgba(255,255,255,0.12)",
-                                background: isMissing ? "rgba(239,68,68,0.10)" : "rgba(0,0,0,0.12)",
-                              }}
-                            >
-                              <div style={{ minWidth: 0 }}>
-                                <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 800 }}>
-                                  {key}
-                                  {isRequired ? (
-                                    <span style={{ marginLeft: 8, fontWeight: 900, color: "rgba(255,255,255,0.78)" }}>• required</span>
-                                  ) : null}
-                                </div>
-                                {isMissing ? (
-                                  <div style={{ marginTop: 4, fontSize: 12, color: "rgba(255,210,210,0.95)", fontWeight: 800 }}>
-                                    Empty — provide a value above (UI-only) or re-upload with this field provided.
-                                  </div>
-                                ) : null}
-                              </div>
+                      <div
+                        style={{
+                          marginTop: 10,
+                          borderRadius: 14,
+                          border: "1px solid rgba(255,255,255,0.14)",
+                          background: "rgba(0,0,0,0.14)",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 720 }}>
+                            <thead>
+                              <tr>
+                                <th
+                                  align="left"
+                                  style={{
+                                    position: "sticky",
+                                    top: 0,
+                                    zIndex: 1,
+                                    padding: "12px 12px",
+                                    fontSize: 12,
+                                    fontWeight: 950,
+                                    letterSpacing: "-0.01em",
+                                    color: "rgba(255,255,255,0.86)",
+                                    background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
+                                    borderBottom: "1px solid rgba(255,255,255,0.10)",
+                                  }}
+                                >
+                                  Field
+                                </th>
+                                <th
+                                  align="left"
+                                  style={{
+                                    position: "sticky",
+                                    top: 0,
+                                    zIndex: 1,
+                                    padding: "12px 12px",
+                                    fontSize: 12,
+                                    fontWeight: 950,
+                                    letterSpacing: "-0.01em",
+                                    color: "rgba(255,255,255,0.86)",
+                                    background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
+                                    borderBottom: "1px solid rgba(255,255,255,0.10)",
+                                  }}
+                                >
+                                  Value
+                                </th>
+                                <th
+                                  align="left"
+                                  style={{
+                                    position: "sticky",
+                                    top: 0,
+                                    zIndex: 1,
+                                    padding: "12px 12px",
+                                    fontSize: 12,
+                                    fontWeight: 950,
+                                    letterSpacing: "-0.01em",
+                                    color: "rgba(255,255,255,0.86)",
+                                    background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
+                                    borderBottom: "1px solid rgba(255,255,255,0.10)",
+                                    width: 120,
+                                  }}
+                                >
+                                  Type
+                                </th>
+                                <th
+                                  align="left"
+                                  style={{
+                                    position: "sticky",
+                                    top: 0,
+                                    zIndex: 1,
+                                    padding: "12px 12px",
+                                    fontSize: 12,
+                                    fontWeight: 950,
+                                    letterSpacing: "-0.01em",
+                                    color: "rgba(255,255,255,0.86)",
+                                    background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
+                                    borderBottom: "1px solid rgba(255,255,255,0.10)",
+                                    width: 130,
+                                  }}
+                                >
+                                  Status
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {flattenedEntries.map(([key, value], idx) => {
+                                const isRequired = requiredFieldPaths.includes(key);
+                                const isMissing = isRequired && isEmptyValue(value);
+                                const rowBg =
+                                  idx % 2 === 0 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.01)";
+                                const statusLabel = isRequired ? (isMissing ? "Missing" : "Required") : "Optional";
+                                const statusStyle = isRequired
+                                  ? isMissing
+                                    ? {
+                                        border: "1px solid rgba(239,68,68,0.40)",
+                                        bg: "rgba(239,68,68,0.12)",
+                                        text: "rgba(255,210,210,0.95)",
+                                      }
+                                    : {
+                                        border: "1px solid rgba(59,130,246,0.34)",
+                                        bg: "rgba(59,130,246,0.12)",
+                                        text: "rgba(210,230,255,0.95)",
+                                      }
+                                  : {
+                                      border: "1px solid rgba(255,255,255,0.14)",
+                                      bg: "rgba(0,0,0,0.10)",
+                                      text: "rgba(255,255,255,0.72)",
+                                    };
 
-                              <div
-                                style={{
-                                  color: "rgba(255,255,255,0.92)",
-                                  fontSize: 12,
-                                  fontWeight: 800,
-                                  textAlign: "right",
-                                  wordBreak: "break-word",
-                                  maxWidth: "55%",
-                                }}
-                              >
-                                {value === undefined || value === null || String(value).trim() === "" ? (
-                                  <span style={{ color: "rgba(255,255,255,0.55)" }}>—</span>
-                                ) : (
-                                  String(value)
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                                return (
+                                  <tr key={key} style={{ background: rowBg }}>
+                                    <td
+                                      style={{
+                                        padding: "12px 12px",
+                                        borderBottom: "1px solid rgba(255,255,255,0.06)",
+                                        verticalAlign: "top",
+                                      }}
+                                    >
+                                      <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.86)" }}>{key}</div>
+                                      <div style={{ marginTop: 4, fontSize: 12, color: "rgba(255,255,255,0.62)" }}>
+                                        {humanizePath(key)}
+                                      </div>
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding: "12px 12px",
+                                        borderBottom: "1px solid rgba(255,255,255,0.06)",
+                                        verticalAlign: "top",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          fontSize: 12,
+                                          fontWeight: 850,
+                                          color: isMissing ? "rgba(255,210,210,0.95)" : "rgba(255,255,255,0.90)",
+                                          wordBreak: "break-word",
+                                        }}
+                                      >
+                                        {getPreviewValue(value)}
+                                      </div>
+                                      {isMissing ? (
+                                        <div style={{ marginTop: 6, fontSize: 12, color: "rgba(255,210,210,0.92)" }}>
+                                          Provide this value above (UI-only) or re-upload with this field present.
+                                        </div>
+                                      ) : null}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding: "12px 12px",
+                                        borderBottom: "1px solid rgba(255,255,255,0.06)",
+                                        verticalAlign: "top",
+                                      }}
+                                    >
+                                      <span
+                                        style={{
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          gap: 8,
+                                          padding: "6px 10px",
+                                          borderRadius: 999,
+                                          border: "1px solid rgba(255,255,255,0.14)",
+                                          background: "rgba(0,0,0,0.10)",
+                                          color: "rgba(255,255,255,0.78)",
+                                          fontSize: 12,
+                                          fontWeight: 900,
+                                        }}
+                                      >
+                                        {getValueTypeLabel(value)}
+                                      </span>
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding: "12px 12px",
+                                        borderBottom: "1px solid rgba(255,255,255,0.06)",
+                                        verticalAlign: "top",
+                                      }}
+                                    >
+                                      <span
+                                        style={{
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          padding: "6px 10px",
+                                          borderRadius: 999,
+                                          border: statusStyle.border,
+                                          background: statusStyle.bg,
+                                          color: statusStyle.text,
+                                          fontSize: 12,
+                                          fontWeight: 950,
+                                        }}
+                                      >
+                                        {statusLabel}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
 
                       <p className="auth-subtitle" style={{ marginTop: 10 }}>
@@ -909,109 +1166,46 @@ export default function UploadPage() {
                         immediately.
                       </p>
                     </div>
+                  </AgentSection>
 
-                    {/* Requested: buttons inside the expandable Input validation section (moved to bottom/end) */}
-                    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 12 }}>
-                      <button
-                        type="button"
-                        className="auth-button"
-                        onClick={onReuploadTryAgain}
-                        style={{
-                          width: "auto",
-                          padding: "10px 14px",
-                          marginTop: 0,
-                          background: "rgba(255,255,255,0.10)",
-                          border: "1px solid rgba(255,255,255,0.16)",
-                          boxShadow: "0 10px 26px rgba(0, 0, 0, 0.18)",
-                        }}
-                      >
-                        Upload another file
-                      </button>
-
-                      <button
-                        type="button"
-                        className="auth-button"
-                        onClick={onProceedToValidation}
-                        style={{ width: "auto", padding: "10px 14px", marginTop: 0 }}
-                      >
-                        Proceed to Validation
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-
-            {/* Newly requested: render a collapsed "Validation" block immediately after the
-                existing Input validation collapsible section. It is only shown after clicking
-                "Proceed to Validation", and it stays collapsed by default with no content. */}
-            {hasSubmitted && showValidationBlock ? (
-              <div
-                style={{
-                  marginTop: 14,
-                  borderRadius: 16,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "rgba(255,255,255,0.06)",
-                  overflow: "hidden",
-                }}
-                role="region"
-                aria-label="Validation"
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Keep collapsed per requirement: show arrow control but do not expand.
-                    setValidationBlockExpanded(false);
-                  }}
-                  aria-expanded={validationBlockExpanded}
-                  aria-controls="upload-validation-panel"
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    padding: "14px 16px",
-                    cursor: "pointer",
-                    background: "transparent",
-                    border: "none",
-                    color: "rgba(255,255,255,0.92)",
-                    textAlign: "left",
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 900, letterSpacing: "-0.01em" }}>Validation</div>
-                  </div>
-
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      width: 32,
-                      height: 32,
-                      display: "grid",
-                      placeItems: "center",
-                      borderRadius: 999,
-                      border: "1px solid rgba(255,255,255,0.14)",
-                      background: "rgba(0,0,0,0.12)",
-                      transform: "rotate(0deg)",
-                      transition: "transform 180ms cubic-bezier(0.2, 0, 0, 1)",
-                      flex: "0 0 auto",
-                      color: "rgba(255,255,255,0.78)",
-                    }}
+                  <AgentSection
+                    title="Validation"
+                    subtitle="Rules + checks beyond ingestion (placeholder)"
+                    status="idle"
+                    expanded={validationExpanded}
+                    onToggle={() => setValidationExpanded((v) => !v)}
                   >
-                    ▼
-                  </span>
-                </button>
+                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)", lineHeight: 1.5 }}>
+                      Validation agent output will appear here. (Coming soon)
+                    </div>
+                  </AgentSection>
 
-                {/* Intentionally no expandable content and no expanded state rendering yet. */}
+                  <AgentSection
+                    title="Pricing"
+                    subtitle="Compute pricing using extracted + validated inputs (placeholder)"
+                    status="idle"
+                    expanded={pricingExpanded}
+                    onToggle={() => setPricingExpanded((v) => !v)}
+                  >
+                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)", lineHeight: 1.5 }}>
+                      Pricing agent output will appear here. (Coming soon)
+                    </div>
+                  </AgentSection>
+
+                  <AgentSection
+                    title="Inventory"
+                    subtitle="Resolve inventory availability and recommendations (placeholder)"
+                    status="idle"
+                    expanded={inventoryExpanded}
+                    onToggle={() => setInventoryExpanded((v) => !v)}
+                  >
+                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)", lineHeight: 1.5 }}>
+                      Inventory agent output will appear here. (Coming soon)
+                    </div>
+                  </AgentSection>
+                </div>
               </div>
             ) : null}
-
-            <div className="auth-footer">
-              <a className="auth-link" href="#/login">
-                Back to Login
-              </a>
-            </div>
           </form>
         </div>
       </section>
