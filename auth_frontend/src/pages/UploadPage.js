@@ -246,6 +246,11 @@ export default function UploadPage() {
     setEmailContents("");
   };
 
+  const onProceedToValidation = () => {
+    /** Navigate to the dedicated Validation page (reads sessionStorage payload). */
+    window.location.hash = "#/input-validation";
+  };
+
   const onSubmit = (e) => {
     e.preventDefault();
 
@@ -394,6 +399,34 @@ export default function UploadPage() {
                       borderTop: "1px solid rgba(255,255,255,0.08)",
                     }}
                   >
+                    {/* Requested: buttons inside the expandable Input validation section */}
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+                      <button
+                        type="button"
+                        className="auth-button"
+                        onClick={onReuploadTryAgain}
+                        style={{
+                          width: "auto",
+                          padding: "10px 14px",
+                          marginTop: 0,
+                          background: "rgba(255,255,255,0.10)",
+                          border: "1px solid rgba(255,255,255,0.16)",
+                          boxShadow: "0 10px 26px rgba(0, 0, 0, 0.18)",
+                        }}
+                      >
+                        Upload another file
+                      </button>
+
+                      <button
+                        type="button"
+                        className="auth-button"
+                        onClick={onProceedToValidation}
+                        style={{ width: "auto", padding: "10px 14px", marginTop: 0 }}
+                      >
+                        Proceed to Validation
+                      </button>
+                    </div>
+
                     {/* Missing fields panel (inline) */}
                     {hasErrors ? (
                       <div
