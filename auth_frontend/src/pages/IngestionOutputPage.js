@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { intakeAgentSample, requiredFieldPaths } from "../sampleData/intakeAgentSample";
 
 /**
@@ -7,12 +7,14 @@ import { intakeAgentSample, requiredFieldPaths } from "../sampleData/intakeAgent
  * Responsibilities:
  * - Read the ingestion output (sample JSON) from sessionStorage (set on Upload submit), or fall back to intakeAgentSample.
  * - Render a clean output view (table of flattened fields).
- * - Provide navigation back to Upload.
+ * - Show missing required fields and allow user to enter them via an "Add missing items" UI (UI-only; not persisted yet).
  */
 
 function getValueAtPath(obj, path) {
   if (!obj || typeof obj !== "object") return undefined;
-  const parts = String(path || "").split(".").filter(Boolean);
+  const parts = String(path || "")
+    .split(".")
+    .filter(Boolean);
   let cur = obj;
   for (const p of parts) {
     if (cur && typeof cur === "object" && p in cur) cur = cur[p];
@@ -83,6 +85,15 @@ function getValueTypeLabel(value) {
   return typeof value;
 }
 
+/**
+ * Prefer a human-friendly label for missing items.
+ * If you later add field-level metadata to `requiredFieldPaths` (e.g., { path, label }),
+ * update this helper accordingly.
+ */
+function getMissingFieldLabel(path) {
+  return humanizePath(path);
+}
+
 // PUBLIC_INTERFACE
 export default function IngestionOutputPage() {
   const extracted = useMemo(() => {
@@ -107,6 +118,36 @@ export default function IngestionOutputPage() {
   }, [extracted]);
 
   const hasMissing = missingRequired.length > 0;
+
+  // UI-only state for "Add missing items"
+  const [showAddMissing, setShowAddMissing] = useState(false);
+  const [missingInputs, setMissingInputs] = useState(() => {
+    const init = {};
+    for (const { path } of missingRequired) init[path] = "";
+    return init;
+  });
+
+  // If missingRequired changes (e.g., different extraction loaded), keep state consistent.
+  // This is intentionally lightweight and UI-only.
+  useMemo(() => {
+    setMissingInputs((prev) => {
+      const next = { ...prev };
+      for (const { path } of missingRequired) {
+        if (!(path in next)) next[path] = "";
+      }
+      // Remove any keys that are no longer missing
+      for (const k of Object.keys(next)) {
+        if (!missingRequired.some((m) => m.path === k)) delete next[k];
+      }
+      return next;
+    });
+
+    // Auto-collapse if no missing fields
+    if (!hasMissing) setShowAddMissing(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMissing, missingRequired.map((m) => m.path).join("|")]);
+
+  const addMissingButtonId = "add-missing-items-toggle";
 
   return (
     <main className="auth-page auth-page--wide" aria-label="Ingestion output page">
@@ -147,16 +188,97 @@ export default function IngestionOutputPage() {
             >
               <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>Missing required fields detected</div>
               <div style={{ marginTop: 6, color: "rgba(255,255,255,0.86)", fontSize: 13, lineHeight: 1.45 }}>
-                This is informational for now. (HITL edits will be wired later.)
+                Use <span style={{ fontWeight: 850 }}>Add missing items</span> to enter missing values. (UI-only; saving will be
+                wired later.)
               </div>
+
               <ul style={{ margin: "10px 0 0 18px", padding: 0, color: "rgba(255,255,255,0.92)", fontSize: 13 }}>
                 {missingRequired.map(({ path }) => (
                   <li key={path} style={{ marginBottom: 6 }}>
-                    <span style={{ fontWeight: 850 }}>{humanizePath(path)}</span>{" "}
+                    <span style={{ fontWeight: 850 }}>{getMissingFieldLabel(path)}</span>{" "}
                     <span style={{ color: "rgba(255,255,255,0.72)" }}>({path})</span>
                   </li>
                 ))}
               </ul>
+
+              {/* Add missing items CTA */}
+              <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  id={addMissingButtonId}
+                  type="button"
+                  onClick={() => setShowAddMissing((s) => !s)}
+                  aria-expanded={showAddMissing}
+                  aria-controls="add-missing-items-panel"
+                  style={{
+                    appearance: "none",
+                    border: "1px solid rgba(245,158,11,0.55)",
+                    background: showAddMissing ? "rgba(245,158,11,0.20)" : "rgba(0,0,0,0.14)",
+                    color: "rgba(255,255,255,0.92)",
+                    padding: "10px 12px",
+                    borderRadius: 12,
+                    fontSize: 13,
+                    fontWeight: 950,
+                    cursor: "pointer",
+                  }}
+                >
+                  Add missing items
+                </button>
+
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.74)" }}>
+                  {showAddMissing ? "Fill the fields below." : "Click to enter the missing fields."}
+                </div>
+              </div>
+
+              {/* Missing items entry panel */}
+              {showAddMissing ? (
+                <div
+                  id="add-missing-items-panel"
+                  role="region"
+                  aria-label="Add missing items"
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(0,0,0,0.12)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                      gap: 12,
+                    }}
+                  >
+                    {missingRequired.map(({ path }) => {
+                      const label = getMissingFieldLabel(path);
+
+                      return (
+                        <div key={path} className="auth-field" style={{ margin: 0 }}>
+                          <label htmlFor={`missing-${path}`} style={{ color: "rgba(255,255,255,0.78)" }}>
+                            {label}
+                          </label>
+                          <input
+                            id={`missing-${path}`}
+                            className="auth-input"
+                            type="text"
+                            placeholder={`Enter ${label}`}
+                            value={missingInputs[path] ?? ""}
+                            onChange={(e) => {
+                              const nextVal = e.target.value;
+                              setMissingInputs((prev) => ({ ...prev, [path]: nextVal }));
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ marginTop: 10, fontSize: 12, color: "rgba(255,255,255,0.66)", lineHeight: 1.45 }}>
+                    Note: these values are currently only shown in the UI and are not sent anywhere yet.
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div
