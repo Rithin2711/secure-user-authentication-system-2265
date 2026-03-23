@@ -22,8 +22,13 @@ export default function LoginPage() {
     try {
       const data = await login({ email: email.trim(), password });
       persistAuth(data);
+
       // Backend now returns message: "Login Successfull"
       setMessage({ type: "success", text: data?.message || "Login Successfull" });
+
+      // Redirect to the exact same page used by the "Upload a document" flow.
+      // This app uses hash routing (see App.js), so we update window.location.hash.
+      window.location.hash = "#/upload";
     } catch (err) {
       // Backend returns 401 detail: "Login failed"
       const msg = err?.message && String(err.message).trim() ? err.message : "Login failed";
