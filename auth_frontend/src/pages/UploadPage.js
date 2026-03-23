@@ -1,10 +1,13 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { intakeAgentSample, requiredFieldPaths } from "../sampleData/intakeAgentSample";
 
 /**
  * Upload page (UI only).
  *
  * Requested behavior:
+ * - Add a dashboard-style top bar on the Upload page with:
+ *   - Left: Tool Name (currently displayed as "Tool Name")
+ *   - Right: user button + icon which opens a menu containing Settings and Logout.
  * - After Submit, DO NOT navigate away.
  * - Disable Submit and show an inline expandable “Input validation” section below it.
  * - The expandable section contains:
@@ -103,11 +106,29 @@ function flattenObject(obj, prefix = "") {
   return out;
 }
 
+/**
+ * Best-effort display name for the current user based on persisted auth info.
+ * Falls back to "User" if not available.
+ */
+function getDisplayUserName() {
+  try {
+    const email = localStorage.getItem("auth_email");
+    if (email && String(email).trim()) return String(email).trim();
+  } catch {
+    // ignore
+  }
+  return "User";
+}
+
 // PUBLIC_INTERFACE
 export default function UploadPage() {
   const [docType, setDocType] = useState("excel"); // excel | pdf | email
   const [file, setFile] = useState(null);
   const [emailContents, setEmailContents] = useState("");
+
+  // Top dashboard user menu state
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuWrapRef = useRef(null);
 
   // Submit / inline validation section state
   const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -127,7 +148,8 @@ export default function UploadPage() {
   const isFileType = docType === "excel" || docType === "pdf";
 
   const accept = useMemo(() => {
-    if (docType === "excel") return ".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    if (docType === "excel")
+      return ".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     if (docType === "pdf") return "application/pdf,.pdf";
     return undefined;
   }, [docType]);
@@ -275,10 +297,243 @@ export default function UploadPage() {
     setValidationExpanded(true);
   };
 
+  // PUBLIC_INTERFACE
+  const onLogout = () => {
+    /** Clears stored auth info and returns user to the Login page. */
+    try {
+      localStorage.removeItem("auth_access_token");
+      localStorage.removeItem("auth_email");
+      localStorage.removeItem("auth_user_id");
+    } catch {
+      // ignore
+    }
+
+    // Also clear any transient extracted state so a new session starts clean.
+    try {
+      sessionStorage.removeItem("intake_agent_extracted_json");
+    } catch {
+      // ignore
+    }
+
+    setIsUserMenuOpen(false);
+    window.location.hash = "#/login";
+  };
+
+  // PUBLIC_INTERFACE
+  const onOpenSettings = () => {
+    /**
+     * UI-only placeholder for settings.
+     * No settings page/route is defined in this template, so we surface a stable message.
+     */
+    setIsUserMenuOpen(false);
+    // eslint-disable-next-line no-alert
+    alert("Settings (coming soon)");
+  };
+
+  // Close user menu on outside click / Escape for expected UX.
+  useEffect(() => {
+    if (!isUserMenuOpen) return undefined;
+
+    const onDocMouseDown = (e) => {
+      const wrap = userMenuWrapRef.current;
+      if (!wrap) return;
+      if (!wrap.contains(e.target)) setIsUserMenuOpen(false);
+    };
+
+    const onDocKeyDown = (e) => {
+      if (e.key === "Escape") setIsUserMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onDocKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onDocKeyDown);
+    };
+  }, [isUserMenuOpen]);
+
+  const displayName = useMemo(() => getDisplayUserName(), []);
+
   return (
     <main className="auth-page auth-page--wide" aria-label="Upload page">
       <section className="auth-card auth-card--flat" role="region" aria-label="Upload">
         <div className="auth-wide-content">
+          {/* Dashboard-style top bar */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 14,
+              padding: "10px 10px",
+              borderRadius: 16,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(255,255,255,0.06)",
+              boxShadow: "0 10px 26px rgba(0,0,0,0.18)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+            }}
+            role="banner"
+            aria-label="Dashboard header"
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                minWidth: 0,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 900,
+                  letterSpacing: "-0.02em",
+                  color: "rgba(255,255,255,0.92)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Tool Name
+              </div>
+            </div>
+
+            <div ref={userMenuWrapRef} style={{ position: "relative", display: "inline-flex" }}>
+              <button
+                type="button"
+                onClick={() => setIsUserMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={isUserMenuOpen}
+                aria-label="Open user menu"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 10,
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "rgba(255,255,255,0.92)",
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 850,
+                  letterSpacing: "-0.01em",
+                  maxWidth: 280,
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    display: "grid",
+                    placeItems: "center",
+                    borderRadius: 999,
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    background: "rgba(0,0,0,0.10)",
+                    flex: "0 0 auto",
+                    fontSize: 14,
+                    lineHeight: 1,
+                  }}
+                  title="User"
+                >
+                  👤
+                </span>
+                <span
+                  style={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: 190,
+                  }}
+                  title={displayName}
+                >
+                  {displayName}
+                </span>
+                <span aria-hidden="true" style={{ opacity: 0.9 }}>
+                  ▾
+                </span>
+              </button>
+
+              {isUserMenuOpen ? (
+                <div
+                  role="menu"
+                  aria-label="User menu"
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "calc(100% + 10px)",
+                    minWidth: 220,
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    background: "rgba(16, 24, 39, 0.75)",
+                    boxShadow: "0 18px 60px rgba(0, 0, 0, 0.45)",
+                    padding: 8,
+                    zIndex: 20,
+                    backdropFilter: "blur(12px)",
+                    WebkitBackdropFilter: "blur(12px)",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "8px 10px",
+                      fontSize: 12,
+                      color: "rgba(255,255,255,0.72)",
+                      borderBottom: "1px solid rgba(255,255,255,0.10)",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Signed in as{" "}
+                    <span style={{ color: "rgba(255,255,255,0.92)", fontWeight: 900 }}>{displayName}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={onOpenSettings}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      borderRadius: 12,
+                      border: "1px solid rgba(255,255,255,0.16)",
+                      background: "rgba(255,255,255,0.08)",
+                      color: "rgba(255,255,255,0.92)",
+                      padding: "10px 10px",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      fontWeight: 850,
+                      letterSpacing: "-0.01em",
+                      marginBottom: 8,
+                    }}
+                  >
+                    Settings
+                  </button>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={onLogout}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      borderRadius: 12,
+                      border: "1px solid rgba(239,68,68,0.35)",
+                      background: "rgba(239,68,68,0.12)",
+                      color: "rgba(255,255,255,0.92)",
+                      padding: "10px 10px",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      fontWeight: 900,
+                      letterSpacing: "-0.01em",
+                    }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
           <h1 className="auth-title">Upload</h1>
           <p className="auth-subtitle">Choose a document type and provide the content to upload.</p>
 
@@ -293,7 +548,6 @@ export default function UploadPage() {
               <p className="auth-subtitle" style={{ marginTop: 8 }}>
                 {helperText}
               </p>
-              {hasSubmitted ? null : null}
             </div>
 
             {isFileType ? (
