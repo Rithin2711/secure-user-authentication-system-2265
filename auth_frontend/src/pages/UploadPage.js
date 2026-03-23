@@ -900,87 +900,74 @@ export default function UploadPage() {
                         Proceed to Validation
                       </button>
                     </div>
-
                   </div>
                 ) : null}
               </div>
+            ) : null}
 
-              {/* Collapsed "Validation" block must be OUTSIDE the inline Input validation panel, directly below it. */}
-              {showValidationBlock ? (
-                <div
-                  style={{
-                    marginTop: 14,
-                    borderRadius: 16,
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    background: "rgba(255,255,255,0.06)",
-                    overflow: "hidden",
+            {/* Newly requested: render a collapsed "Validation" block immediately after the
+                existing Input validation collapsible section. It is only shown after clicking
+                "Proceed to Validation", and it stays collapsed by default with no content. */}
+            {hasSubmitted && showValidationBlock ? (
+              <div
+                style={{
+                  marginTop: 14,
+                  borderRadius: 16,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(255,255,255,0.06)",
+                  overflow: "hidden",
+                }}
+                role="region"
+                aria-label="Validation"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Keep collapsed per requirement: show arrow control but do not expand.
+                    setValidationBlockExpanded(false);
                   }}
-                  role="region"
-                  aria-label="Validation"
+                  aria-expanded={validationBlockExpanded}
+                  aria-controls="upload-validation-panel"
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    padding: "14px 16px",
+                    cursor: "pointer",
+                    background: "transparent",
+                    border: "none",
+                    color: "rgba(255,255,255,0.92)",
+                    textAlign: "left",
+                  }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Intentionally NO-OP for now (do not expand yet).
-                      // Future iteration: setValidationBlockExpanded((v) => !v);
-                      setValidationBlockExpanded(false);
-                    }}
-                    aria-expanded={validationBlockExpanded}
-                    aria-controls="upload-validation-panel"
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 900, letterSpacing: "-0.01em" }}>Validation</div>
+                  </div>
+
+                  <span
+                    aria-hidden="true"
                     style={{
-                      width: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      padding: "14px 16px",
-                      cursor: "pointer",
-                      background: "transparent",
-                      border: "none",
-                      color: "rgba(255,255,255,0.92)",
-                      textAlign: "left",
+                      width: 32,
+                      height: 32,
+                      display: "grid",
+                      placeItems: "center",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      background: "rgba(0,0,0,0.12)",
+                      transform: "rotate(0deg)",
+                      transition: "transform 180ms cubic-bezier(0.2, 0, 0, 1)",
+                      flex: "0 0 auto",
+                      color: "rgba(255,255,255,0.78)",
                     }}
                   >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 900, letterSpacing: "-0.01em" }}>Validation</div>
-                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.68)", marginTop: 2 }}>
-                        Click the arrow to expand (coming next)
-                      </div>
-                    </div>
+                    ▼
+                  </span>
+                </button>
 
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        width: 32,
-                        height: 32,
-                        display: "grid",
-                        placeItems: "center",
-                        borderRadius: 999,
-                        border: "1px solid rgba(255,255,255,0.14)",
-                        background: "rgba(0,0,0,0.12)",
-                        transform: validationBlockExpanded ? "rotate(180deg)" : "rotate(0deg)",
-                        transition: "transform 180ms cubic-bezier(0.2, 0, 0, 1)",
-                        flex: "0 0 auto",
-                        color: "rgba(255,255,255,0.78)",
-                      }}
-                    >
-                      ▼
-                    </span>
-                  </button>
-
-                  {validationBlockExpanded ? (
-                    <div
-                      id="upload-validation-panel"
-                      style={{
-                        padding: "14px 16px 16px",
-                        borderTop: "1px solid rgba(255,255,255,0.08)",
-                      }}
-                    >
-                      {/* Intentionally empty for now; future iteration will place validation content here. */}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
+                {/* Intentionally no expandable content and no expanded state rendering yet. */}
+              </div>
             ) : null}
 
             <div className="auth-footer">
