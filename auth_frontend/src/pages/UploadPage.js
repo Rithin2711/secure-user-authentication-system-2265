@@ -1,15 +1,26 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { intakeAgentSample } from "../sampleData/intakeAgentSample";
+import {
+  buildPersistedUploadState,
+  clearUploadPageState,
+  loadUploadPageState,
+  saveUploadPageState,
+} from "../services/uploadSessionStore";
 
 /**
  * Upload page (UI-only).
  *
- * Updated behavior per request:
- * - On clicking Submit, show an "Orchestrator" view with 4 horizontally arranged agent blocks.
- * - Clicking a block navigates to a separate page.
- * - Only "Ingestion" navigation is functional for now; other blocks are placeholders.
+ * Required behavior:
+ * - Navigating to Ingestion and then back should NOT reset this page.
+ * - Preserve:
+ *   - uploaded file/email content
+ *   - selected upload type
+ *   - extracted JSON
+ *   - orchestrator/agent UI state (hasSubmitted)
  *
- * Note: This is UI-only and uses sample extracted JSON (intakeAgentSample).
+ * Implementation notes:
+ * - We use sessionStorage-backed state so it survives route transitions and browser back/forward.
+ * - We cannot persist the actual File object, so we persist file metadata for display only.
  */
 
 function getDisplayUserName() {
@@ -142,16 +153,18 @@ function AgentBlock({ title, subtitle, status = "idle", enabled, onClick }) {
 
 // PUBLIC_INTERFACE
 export default function UploadPage() {
+  // --- Core upload inputs (persisted) ---
   const [docType, setDocType] = useState("excel"); // excel | pdf | email
-  const [file, setFile] = useState(null);
+  const [file, setFile] = useState(null); // not persisted (File not serializable)
+  const [fileMeta, setFileMeta] = useState(null); // persisted for display (name/size/etc)
   const [emailContents, setEmailContents] = useState("");
 
-  // Top dashboard user menu state
+  // Orchestrator view state (persisted)
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  // Top dashboard user menu state (not necessary to persist)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuWrapRef = useRef(null);
-
-  // Orchestrator view state
-  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const isFileType = docType === "excel" || docType === "pdf";
 
@@ -168,34 +181,115 @@ export default function UploadPage() {
     return "Paste the email contents below (including subject/body if available).";
   }, [docType]);
 
+  // Restore persisted state on first mount.
+  useEffect(() => {
+    const persisted = loadUploadPageState();
+    if (!persisted || typeof persisted !== "object") return;
+
+    // Restore core fields
+    if (persisted.docType) setDocType(persisted.docType);
+    if (typeof persisted.emailContents === "string") setEmailContents(persisted.emailContents);
+    setHasSubmitted(Boolean(persisted.hasSubmitted));
+    if (persisted.fileMeta && typeof persisted.fileMeta === "object") setFileMeta(persisted.fileMeta);
+
+    /**
+     * Keep extracted JSON aligned:
+     * - UploadPage historically sets "intake_agent_extracted_json" on Submit.
+     * - If we have persisted extractedJsonRaw, rehydrate it into sessionStorage so
+     *   IngestionOutputPage still renders correctly even after refresh/back.
+     */
+    try {
+      if (typeof persisted.extractedJsonRaw === "string" && persisted.extractedJsonRaw.trim()) {
+        sessionStorage.setItem("intake_agent_extracted_json", persisted.extractedJsonRaw);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Persist whenever relevant state changes.
+  useEffect(() => {
+    let extractedJsonRaw = null;
+    try {
+      extractedJsonRaw = sessionStorage.getItem("intake_agent_extracted_json");
+    } catch {
+      extractedJsonRaw = null;
+    }
+
+    saveUploadPageState(
+      buildPersistedUploadState({
+        docType,
+        file,
+        emailContents,
+        hasSubmitted,
+        extractedJsonRaw,
+      })
+    );
+
+    // Keep file meta in sync when a real File is selected.
+    // (We store meta separately so it survives route transitions.)
+    if (file) {
+      setFileMeta({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docType, file, emailContents, hasSubmitted]);
+
   const onChangeType = (e) => {
     const nextType = e.target.value;
     setDocType(nextType);
 
-    // Reset previous inputs when switching modes to avoid accidental submission of stale data.
-    setFile(null);
-    setEmailContents("");
-
-    // Reset orchestrator UI
+    /**
+     * Important: Do NOT blow away user state on type-change beyond what is necessary.
+     * Previously this handler reset file/email + orchestrator + extracted JSON.
+     * That created "fresh reset" experiences when navigating back.
+     *
+     * New behavior:
+     * - Switching type is an explicit user action; we should clear inputs that no longer apply
+     *   (file/email) and reset orchestrator for a clean submission in the new mode.
+     * - We do NOT clear persisted store globally (we re-persist immediately with the new state).
+     */
     setHasSubmitted(false);
 
-    // Clear any previously "extracted" results (UI-only).
-    sessionStorage.removeItem("intake_agent_extracted_json");
+    // Clear inputs that do not apply to the new type
+    setFile(null);
+    setFileMeta(null);
+    setEmailContents("");
+
+    // Clear any previously "extracted" results (UI-only) since upload type changed.
+    try {
+      sessionStorage.removeItem("intake_agent_extracted_json");
+    } catch {
+      // ignore
+    }
   };
 
   const onStartOver = () => {
     // UI-only reset for another upload attempt.
-    sessionStorage.removeItem("intake_agent_extracted_json");
+    try {
+      sessionStorage.removeItem("intake_agent_extracted_json");
+    } catch {
+      // ignore
+    }
+
     setHasSubmitted(false);
     setFile(null);
+    setFileMeta(null);
     setEmailContents("");
+
+    // Clear persisted page state (explicit user intent to start over).
+    clearUploadPageState();
   };
 
   const onSubmit = (e) => {
     e.preventDefault();
 
     // UI-only validation (keep on same page).
-    if (isFileType && !file) {
+    if (isFileType && !file && !fileMeta) {
       // eslint-disable-next-line no-alert
       alert("Please choose a file to upload.");
       return;
@@ -207,7 +301,11 @@ export default function UploadPage() {
     }
 
     // UI-only: store the intake-agent extracted JSON (used by ingestion output page).
-    sessionStorage.setItem("intake_agent_extracted_json", JSON.stringify(intakeAgentSample));
+    try {
+      sessionStorage.setItem("intake_agent_extracted_json", JSON.stringify(intakeAgentSample));
+    } catch {
+      // ignore
+    }
 
     // Show orchestrator view.
     setHasSubmitted(true);
@@ -224,12 +322,15 @@ export default function UploadPage() {
       // ignore
     }
 
-    // Also clear any transient extracted state so a new session starts clean.
+    // Clear transient extracted state so a new session starts clean.
     try {
       sessionStorage.removeItem("intake_agent_extracted_json");
     } catch {
       // ignore
     }
+
+    // Also clear persisted Upload state on logout (new session should be fresh).
+    clearUploadPageState();
 
     setIsUserMenuOpen(false);
     window.location.hash = "#/login";
@@ -501,12 +602,31 @@ export default function UploadPage() {
                   className="auth-input"
                   type="file"
                   accept={accept}
-                  onChange={(e) => setFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
+                  onChange={(e) => {
+                    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                    setFile(f);
+                    // Persisted metadata is updated by effect; set immediately for snappy UI.
+                    setFileMeta(
+                      f
+                        ? {
+                            name: f.name,
+                            size: f.size,
+                            type: f.type,
+                            lastModified: f.lastModified,
+                          }
+                        : null
+                    );
+                  }}
                   disabled={hasSubmitted}
                 />
                 {file ? (
                   <p className="auth-subtitle" style={{ marginTop: 8 }}>
                     Selected: <span style={{ color: "rgba(255,255,255,0.92)" }}>{file.name}</span>
+                  </p>
+                ) : fileMeta ? (
+                  <p className="auth-subtitle" style={{ marginTop: 8 }}>
+                    Previously selected: <span style={{ color: "rgba(255,255,255,0.92)" }}>{fileMeta.name}</span>{" "}
+                    <span style={{ color: "rgba(255,255,255,0.66)" }}>(re-select file to upload again)</span>
                   </p>
                 ) : null}
               </div>
