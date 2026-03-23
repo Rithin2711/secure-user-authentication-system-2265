@@ -228,20 +228,7 @@ export default function IngestionOutputPage() {
       <section className="auth-card auth-card--flat" role="region" aria-label="Ingestion output">
         <div className="auth-wide-content" style={{ paddingTop: 10 }}>
           {/* Top bar */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, flexWrap: "wrap" }}>
-            <div
-              style={{
-                fontSize: 12,
-                color: "rgba(255,255,255,0.70)",
-                border: "1px solid rgba(255,255,255,0.14)",
-                background: "rgba(0,0,0,0.12)",
-                padding: "8px 10px",
-                borderRadius: 999,
-              }}
-            >
-              Ingestion agent output (UI-only)
-            </div>
-          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, flexWrap: "wrap" }} />
 
           <h1 className="auth-title" style={{ marginTop: 14 }}>
             Ingestion
