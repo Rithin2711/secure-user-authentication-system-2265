@@ -9,7 +9,8 @@ export const intakeAgentSample = {
   campaign_details: {
     campaign_name: "Brand Refresh 2026",
     campaign_start_date: "04/12/2026",
-    campaign_end_date: "06/30/2026",
+    // Intentionally left empty to demonstrate UI required-field validation on InputValidationPage.
+    campaign_end_date: "",
     currency: "USD",
     audience_segments: ["Age;20+"],
     additional_info: ["mid-roll"],
