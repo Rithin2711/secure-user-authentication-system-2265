@@ -96,6 +96,14 @@
   z-index: 1; /* above background overlays */
 }
 
+/* Full-width layout variant (used by Input Validation page) */
+.auth-page.auth-page--wide {
+  max-width: none;
+  width: 100%;
+  padding: 0 20px; /* create comfortable gutters on large screens */
+  box-sizing: border-box;
+}
+
 .auth-card {
   width: 100%;
   text-align: left;
@@ -110,6 +118,40 @@
   /* Glass blur */
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
+}
+
+/* Input Validation: remove the "popup/card" look and stretch content across the screen.
+   Keep the same background/theme (auth-shell) by only changing the inner container surface. */
+.auth-card.auth-card--flat {
+  max-width: 1200px; /* near full-width while keeping readability */
+  margin: 0 auto;
+
+  padding: 22px 0; /* content will manage its own padding */
+  border: none;
+  box-shadow: none;
+  background: transparent;
+
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Inner content wrapper for the flat layout */
+.auth-wide-content {
+  padding: 0 8px;
+}
+
+@media (max-width: 520px) {
+  .auth-page.auth-page--wide {
+    padding: 0 14px;
+  }
+
+  .auth-card.auth-card--flat {
+    padding: 16px 0;
+  }
+
+  .auth-wide-content {
+    padding: 0;
+  }
 }
 
 .auth-title {
