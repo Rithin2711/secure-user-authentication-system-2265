@@ -1,41 +1,34 @@
 import React, { useState } from "react";
-import { login, persistAuth } from "../services/authApi";
 
 // PUBLIC_INTERFACE
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  /**
+   * Keep the same UI behavior (disable button + show inline message) but remove
+   * any backend dependency. Clicking "Login" always navigates to Upload.
+   */
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
 
-  const onSubmit = async (e) => {
+  const onSubmit = (e) => {
     e.preventDefault();
     setMessage({ type: "", text: "" });
 
+    // No backend auth for now; keep minimal client-side check to avoid "empty submit" confusion.
     if (!email.trim() || !password) {
       setMessage({ type: "error", text: "Please enter email and password." });
       return;
     }
 
     setSubmitting(true);
-    try {
-      const data = await login({ email: email.trim(), password });
-      persistAuth(data);
 
-      // Backend now returns message: "Login Successfull"
-      setMessage({ type: "success", text: data?.message || "Login Successfull" });
+    // Navigate to the existing Upload route (hash routing, see App.js).
+    window.location.hash = "#/upload";
 
-      // Redirect to the exact same page used by the "Upload a document" flow.
-      // This app uses hash routing (see App.js), so we update window.location.hash.
-      window.location.hash = "#/upload";
-    } catch (err) {
-      // Backend returns 401 detail: "Login failed"
-      const msg = err?.message && String(err.message).trim() ? err.message : "Login failed";
-      setMessage({ type: "error", text: msg });
-    } finally {
-      setSubmitting(false);
-    }
+    // Reset submitting state (navigation happens immediately in this app, but keep state consistent).
+    setSubmitting(false);
   };
 
   return (
