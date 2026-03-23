@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import "./App.css";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
@@ -31,18 +31,15 @@ function useHashRoute() {
 
 // PUBLIC_INTERFACE
 function App() {
-  /** Keeps the existing template theme capability without forcing it into the auth UI. */
-  const [theme, setTheme] = useState("light");
+  /**
+   * The dark/light theme toggle UI has been removed per requirements.
+   * We keep a deterministic theme attribute so the CSS variables remain stable.
+   */
   const route = useHashRoute();
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
-
-  // PUBLIC_INTERFACE
-  const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
-  };
+    document.documentElement.setAttribute("data-theme", "light");
+  }, []);
 
   const content = useMemo(() => {
     if (route === "signup") return <SignupPage />;
@@ -51,19 +48,7 @@ function App() {
     return <LoginPage />;
   }, [route]);
 
-  return (
-    <div className="App auth-shell">
-      <button
-        className="theme-toggle"
-        onClick={toggleTheme}
-        aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
-      >
-        {theme === "light" ? "🌙 Dark" : "☀️ Light"}
-      </button>
-
-      {content}
-    </div>
-  );
+  return <div className="App auth-shell">{content}</div>;
 }
 
 export default App;

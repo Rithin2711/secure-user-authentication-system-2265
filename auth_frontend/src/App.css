@@ -326,40 +326,6 @@ select.auth-input option {
   transition: color 0.3s ease;
 }
 
-.theme-toggle {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-
-  /* Make toggle match the new auth canvas */
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
-
-  padding: 10px 14px;
-  font-size: 13px;
-  font-weight: 650;
-  cursor: pointer;
-
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-
-  transition: transform 0.2s ease, opacity 0.2s ease, background-color 0.2s ease;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
-  z-index: 2;
-}
-
-.theme-toggle:hover {
-  transform: translateY(-1px);
-  opacity: 0.95;
-  background: rgba(255, 255, 255, 0.16);
-}
-
-.theme-toggle:active {
-  transform: translateY(0);
-}
-
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);
@@ -382,12 +348,5 @@ select.auth-input option {
 
   .auth-title {
     font-size: 24px;
-  }
-
-  .theme-toggle {
-    top: 12px;
-    right: 12px;
-    padding: 9px 12px;
-    font-size: 12px;
   }
 }
