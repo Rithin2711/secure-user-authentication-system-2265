@@ -8,6 +8,10 @@ import { intakeAgentSample, requiredFieldPaths } from "../sampleData/intakeAgent
  * - Read the ingestion output (sample JSON) from sessionStorage (set on Upload submit), or fall back to intakeAgentSample.
  * - Render a clean output view (table of flattened fields).
  * - Show missing required fields and allow user to enter them via an "Add missing items" UI (UI-only; not persisted yet).
+ *
+ * Missing-field entry behavior:
+ * - Inputs are treated as drafts while typing.
+ * - Values are only committed into the displayed JSON when the user presses Enter.
  */
 
 function getValueAtPath(obj, path) {
@@ -21,6 +25,48 @@ function getValueAtPath(obj, path) {
     else return undefined;
   }
   return cur;
+}
+
+/**
+ * Sets a value on an object by a dot-separated path, creating intermediate objects as needed.
+ * Returns a NEW root object (does not mutate input).
+ */
+function setValueAtPathImmutable(obj, path, value) {
+  const parts = String(path || "")
+    .split(".")
+    .filter(Boolean);
+
+  // If path is empty, treat as no-op.
+  if (parts.length === 0) return obj;
+
+  // Ensure we always operate on an object root.
+  const root = obj && typeof obj === "object" ? obj : {};
+  const nextRoot = Array.isArray(root) ? [...root] : { ...root };
+
+  let cur = nextRoot;
+
+  for (let i = 0; i < parts.length; i += 1) {
+    const key = parts[i];
+    const isLeaf = i === parts.length - 1;
+
+    if (isLeaf) {
+      cur[key] = value;
+      break;
+    }
+
+    const existing = cur[key];
+    let nextLevel;
+    if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+      nextLevel = { ...existing };
+    } else {
+      nextLevel = {};
+    }
+
+    cur[key] = nextLevel;
+    cur = nextLevel;
+  }
+
+  return nextRoot;
 }
 
 /**
@@ -96,7 +142,7 @@ function getMissingFieldLabel(path) {
 
 // PUBLIC_INTERFACE
 export default function IngestionOutputPage() {
-  const extracted = useMemo(() => {
+  const extractedBase = useMemo(() => {
     try {
       const raw = sessionStorage.getItem("intake_agent_extracted_json");
       if (raw) return JSON.parse(raw);
@@ -106,29 +152,42 @@ export default function IngestionOutputPage() {
     return intakeAgentSample;
   }, []);
 
+  /**
+   * The JSON shown in the UI. This is what the table (and missing detection) reflect.
+   * Missing-field inputs should only update this object on Enter.
+   */
+  const [displayedJson, setDisplayedJson] = useState(extractedBase);
+
   const flattenedEntries = useMemo(() => {
-    const pairs = flattenObject(extracted);
+    const pairs = flattenObject(displayedJson);
     return pairs.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
-  }, [extracted]);
+  }, [displayedJson]);
 
   const missingRequired = useMemo(() => {
     return requiredFieldPaths
-      .map((path) => ({ path, value: getValueAtPath(extracted, path) }))
+      .map((path) => ({ path, value: getValueAtPath(displayedJson, path) }))
       .filter(({ value }) => isEmptyValue(value));
-  }, [extracted]);
+  }, [displayedJson]);
 
   const hasMissing = missingRequired.length > 0;
 
   // UI-only state for "Add missing items"
   const [showAddMissing, setShowAddMissing] = useState(false);
+
+  /**
+   * Draft input values (what user has typed but not yet committed to JSON).
+   * Keys are the required-field paths.
+   */
   const [missingInputs, setMissingInputs] = useState(() => {
     const init = {};
     for (const { path } of missingRequired) init[path] = "";
     return init;
   });
 
-  // If missingRequired changes (e.g., different extraction loaded), keep state consistent.
-  // This is intentionally lightweight and UI-only.
+  /**
+   * If missingRequired changes (e.g., different extraction loaded), keep draft state consistent.
+   * This is intentionally lightweight and UI-only.
+   */
   useMemo(() => {
     setMissingInputs((prev) => {
       const next = { ...prev };
@@ -146,6 +205,16 @@ export default function IngestionOutputPage() {
     if (!hasMissing) setShowAddMissing(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasMissing, missingRequired.map((m) => m.path).join("|")]);
+
+  // PUBLIC_INTERFACE
+  function commitMissingField(path) {
+    /**
+     * Commit a draft missing-field value into the displayed JSON.
+     * This is triggered only when the user presses Enter in a missing-field input.
+     */
+    const draft = missingInputs[path] ?? "";
+    setDisplayedJson((prev) => setValueAtPathImmutable(prev, path, draft));
+  }
 
   const addMissingButtonId = "add-missing-items-toggle";
 
@@ -268,6 +337,12 @@ export default function IngestionOutputPage() {
                               const nextVal = e.target.value;
                               setMissingInputs((prev) => ({ ...prev, [path]: nextVal }));
                             }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                commitMissingField(path);
+                              }
+                            }}
                           />
                         </div>
                       );
@@ -275,7 +350,7 @@ export default function IngestionOutputPage() {
                   </div>
 
                   <div style={{ marginTop: 10, fontSize: 12, color: "rgba(255,255,255,0.66)", lineHeight: 1.45 }}>
-                    Note: these values are currently only shown in the UI and are not sent anywhere yet.
+                    Note: these values are currently only committed into the JSON preview when you press Enter.
                   </div>
                 </div>
               ) : null}
