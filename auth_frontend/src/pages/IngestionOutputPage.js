@@ -113,34 +113,7 @@ export default function IngestionOutputPage() {
       <section className="auth-card auth-card--flat" role="region" aria-label="Ingestion output">
         <div className="auth-wide-content" style={{ paddingTop: 10 }}>
           {/* Top bar */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={() => {
-                window.location.hash = "#/upload";
-              }}
-              aria-label="Back to Upload"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.18)",
-                background: "rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.92)",
-                padding: "10px 12px",
-                cursor: "pointer",
-                fontSize: 13,
-                fontWeight: 900,
-                letterSpacing: "-0.01em",
-              }}
-            >
-              <span aria-hidden="true" style={{ fontSize: 14, lineHeight: 1 }}>
-                ←
-              </span>
-              Back to Upload
-            </button>
-
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, flexWrap: "wrap" }}>
             <div
               style={{
                 fontSize: 12,
@@ -405,11 +378,7 @@ export default function IngestionOutputPage() {
             </div>
           </div>
 
-          <div className="auth-footer" style={{ marginTop: 16 }}>
-            <a className="auth-link" href="#/upload">
-              Back to Upload
-            </a>
-          </div>
+          <div className="auth-footer" style={{ marginTop: 16 }} />
         </div>
       </section>
     </main>

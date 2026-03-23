@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import IngestionOutputPage from "./IngestionOutputPage";
 
 /**
- * Orchestrator Results Page (UI-only).
+ * Work Flow Results Page (UI-only).
  *
  * Responsibilities:
  * - Provide a dashboard-like header (matching Upload page top bar styling).
@@ -329,7 +329,7 @@ export default function OrchestratorResultsPage() {
             >
               Agentic Ecosystem
             </div>
-            <div style={{ marginTop: 2, fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Orchestrator results</div>
+            <div style={{ marginTop: 2, fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Work Flow results</div>
           </div>
         </div>
 
@@ -504,7 +504,7 @@ export default function OrchestratorResultsPage() {
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div>
               <h1 className="auth-title" style={{ margin: 0 }}>
-                Orchestrator
+                Work Flow
               </h1>
               <p className="auth-subtitle" style={{ marginTop: 8 }}>
                 Select an agent to view its output.
