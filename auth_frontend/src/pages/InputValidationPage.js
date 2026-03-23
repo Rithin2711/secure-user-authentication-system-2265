@@ -77,6 +77,10 @@ function flattenObject(obj, prefix = "") {
 export default function InputValidationPage() {
   const [expanded, setExpanded] = useState(true);
 
+  // Missing-field UI state: reveal inputs on demand
+  const [showMissingInputs, setShowMissingInputs] = useState(false);
+  const [missingFieldInputs, setMissingFieldInputs] = useState({});
+
   const extracted = useMemo(() => {
     // Prefer payload from Upload page; fall back to the sample attachment JSON.
     try {
@@ -106,6 +110,14 @@ export default function InputValidationPage() {
     // Clear previous extracted payload so the next run is "fresh".
     sessionStorage.removeItem("intake_agent_extracted_json");
     window.location.hash = "#/upload";
+  };
+
+  const onToggleMissingInputs = () => {
+    setShowMissingInputs((v) => !v);
+  };
+
+  const onChangeMissingField = (path, value) => {
+    setMissingFieldInputs((prev) => ({ ...prev, [path]: value }));
   };
 
   return (
@@ -159,10 +171,64 @@ export default function InputValidationPage() {
                   Re-upload / try again
                 </button>
 
-                <a className="auth-link" href="#/upload" onClick={(e) => e.preventDefault() || onReupload()}>
-                  Back to Upload
-                </a>
+                <button
+                  type="button"
+                  className="auth-button"
+                  onClick={onToggleMissingInputs}
+                  aria-expanded={showMissingInputs}
+                  style={{
+                    width: "auto",
+                    padding: "10px 14px",
+                    marginTop: 0,
+                    background: "linear-gradient(135deg, rgba(59,130,246,0.95), rgba(6,182,212,0.80))",
+                    boxShadow: "0 10px 26px rgba(59, 130, 246, 0.22)",
+                  }}
+                >
+                  Upload missing data
+                </button>
               </div>
+
+              {showMissingInputs ? (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: "12px 12px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(0,0,0,0.12)",
+                  }}
+                >
+                  <div style={{ fontWeight: 800, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>
+                    Provide missing fields
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 12, color: "rgba(255,255,255,0.70)", lineHeight: 1.45 }}>
+                    Enter the missing values below. (UI-only in this template; values are not yet submitted to a backend.)
+                  </div>
+
+                  <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+                    {missingRequired.map(({ path }) => {
+                      const label = `${humanizePath(path)}:`;
+                      const id = `missing-${path.replace(/[^\w-]/g, "-")}`;
+
+                      return (
+                        <div className="auth-field" key={path} style={{ marginTop: 0 }}>
+                          <label htmlFor={id} style={{ color: "rgba(255,255,255,0.80)" }}>
+                            {label}
+                          </label>
+                          <input
+                            id={id}
+                            className="auth-input"
+                            type="text"
+                            placeholder={`Enter ${humanizePath(path)}`}
+                            value={missingFieldInputs[path] || ""}
+                            onChange={(e) => onChangeMissingField(path, e.target.value)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div
