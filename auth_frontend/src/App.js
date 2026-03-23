@@ -3,16 +3,18 @@ import "./App.css";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import UploadPage from "./pages/UploadPage";
+import InputValidationPage from "./pages/InputValidationPage";
 
 /**
  * Simple, dependency-free routing to avoid adding react-router.
- * Uses hash-based navigation: #/login, #/signup, and #/upload.
+ * Uses hash-based navigation: #/login, #/signup, #/upload, and #/input-validation.
  */
 function useHashRoute() {
   const getRoute = () => {
     const hash = window.location.hash || "#/login";
     if (hash.startsWith("#/signup")) return "signup";
     if (hash.startsWith("#/upload")) return "upload";
+    if (hash.startsWith("#/input-validation")) return "input-validation";
     return "login";
   };
 
@@ -45,6 +47,7 @@ function App() {
   const content = useMemo(() => {
     if (route === "signup") return <SignupPage />;
     if (route === "upload") return <UploadPage />;
+    if (route === "input-validation") return <InputValidationPage />;
     return <LoginPage />;
   }, [route]);
 

@@ -38,8 +38,7 @@ export default function UploadPage() {
 
   const onSubmit = (e) => {
     e.preventDefault();
-    // No backend endpoint specified in the work item; keep this as UI-only for now.
-    // This handler validates the presence of required input and provides a basic UX hint.
+    // UI-only validation before navigating to results page.
     if (isFileType && !file) {
       // eslint-disable-next-line no-alert
       alert("Please choose a file to upload.");
@@ -51,8 +50,8 @@ export default function UploadPage() {
       return;
     }
 
-    // eslint-disable-next-line no-alert
-    alert("Upload captured in UI. (Backend integration not implemented yet.)");
+    // Navigate to the new Input Validation results page (hash routing, no react-router).
+    window.location.hash = "#/input-validation";
   };
 
   return (
