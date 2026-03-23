@@ -201,9 +201,7 @@ export default function InputValidationPage() {
                   <div style={{ fontWeight: 800, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>
                     Provide missing fields
                   </div>
-                  <div style={{ marginTop: 6, fontSize: 12, color: "rgba(255,255,255,0.70)", lineHeight: 1.45 }}>
-                    Enter the missing values below. (UI-only in this template; values are not yet submitted to a backend.)
-                  </div>
+
 
                   <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
                     {missingRequired.map(({ path }) => {
