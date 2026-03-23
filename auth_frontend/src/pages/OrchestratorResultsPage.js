@@ -500,7 +500,7 @@ export default function OrchestratorResultsPage() {
 
       <section className="auth-card auth-card--flat" role="region" aria-label="Orchestrator content">
         {/* spacing so content starts below fixed bar */}
-        <div className="auth-wide-content" style={{ paddingTop: 86 }}>
+        <div className="auth-wide-content" style={{ paddingTop: 12 }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div>
               <h1 className="auth-title" style={{ margin: 0 }}>
