@@ -103,6 +103,13 @@ export default function InputValidationPage() {
 
   // Missing-field UI state: reveal inputs on demand
   const [showMissingInputs, setShowMissingInputs] = useState(false);
+
+  /**
+   * Draft vs committed missing-field state:
+   * - missingFieldDrafts: what the user is currently typing (does NOT affect JSON preview)
+   * - missingFieldInputs: committed values (only updated when user presses Enter)
+   */
+  const [missingFieldDrafts, setMissingFieldDrafts] = useState({});
   const [missingFieldInputs, setMissingFieldInputs] = useState({});
 
   const extracted = useMemo(() => {
@@ -119,9 +126,9 @@ export default function InputValidationPage() {
   /**
    * UI-only "merged" JSON:
    * - Start with the extracted JSON
-   * - Overwrite any required paths the user filled in via the missing-field inputs
+   * - Overwrite any required paths the user COMMITTED via the missing-field inputs (Enter key)
    *
-   * This keeps the theme and JSON display intact, while making the JSON preview reflect HITL inputs.
+   * This keeps the theme and JSON display intact, and ensures typing alone does not update JSON.
    */
   const mergedExtracted = useMemo(() => {
     const clone = structuredClone ? structuredClone(extracted) : JSON.parse(JSON.stringify(extracted));
@@ -170,8 +177,25 @@ export default function InputValidationPage() {
     setShowMissingInputs((v) => !v);
   };
 
-  const onChangeMissingField = (path, value) => {
-    setMissingFieldInputs((prev) => ({ ...prev, [path]: value }));
+  const onChangeMissingFieldDraft = (path, value) => {
+    setMissingFieldDrafts((prev) => ({ ...prev, [path]: value }));
+  };
+
+  const commitMissingField = (path) => {
+    setMissingFieldInputs((prev) => {
+      const next = { ...prev };
+      const v = missingFieldDrafts[path];
+
+      // If committed value is empty, remove the key entirely
+      // (so required-field validation still treats it as missing).
+      if (v === undefined || v === null || String(v).trim() === "") {
+        delete next[path];
+        return next;
+      }
+
+      next[path] = v;
+      return next;
+    });
   };
 
   return (
@@ -261,6 +285,7 @@ export default function InputValidationPage() {
                     {missingRequired.map(({ path }) => {
                       const label = `${humanizePath(path)}:`;
                       const id = `missing-${path.replace(/[^\w-]/g, "-")}`;
+                      const draftValue = missingFieldDrafts[path] ?? "";
 
                       return (
                         <div className="auth-field" key={path} style={{ marginTop: 0 }}>
@@ -272,9 +297,18 @@ export default function InputValidationPage() {
                             className="auth-input"
                             type="text"
                             placeholder={`Enter ${humanizePath(path)}`}
-                            value={missingFieldInputs[path] || ""}
-                            onChange={(e) => onChangeMissingField(path, e.target.value)}
+                            value={draftValue}
+                            onChange={(e) => onChangeMissingFieldDraft(path, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                commitMissingField(path);
+                              }
+                            }}
                           />
+                          <div style={{ marginTop: 6, fontSize: 12, color: "rgba(255,255,255,0.62)" }}>
+                            Press <span style={{ color: "rgba(255,255,255,0.86)", fontWeight: 750 }}>Enter</span> to apply to the JSON preview.
+                          </div>
                         </div>
                       );
                     })}
