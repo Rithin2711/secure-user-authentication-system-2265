@@ -29,10 +29,25 @@ async function tryReadJson(resp) {
   }
 }
 
-async function buildError(resp) {
+async function buildError(resp, url) {
   const data = await tryReadJson(resp);
-  const msg = data?.detail || data?.message || `Request failed (${resp.status})`;
-  return new Error(msg);
+
+  // Try to extract meaningful text for common "Not Found" HTML/plaintext responses.
+  let bodyText = "";
+  try {
+    bodyText = await resp.clone().text();
+  } catch {
+    bodyText = "";
+  }
+
+  const msg =
+    data?.detail ||
+    data?.message ||
+    (bodyText && bodyText.length < 240 ? bodyText : "") ||
+    `Request failed (${resp.status})`;
+
+  const where = url ? ` (${url})` : "";
+  return new Error(`${msg}${where}`);
 }
 
 function joinUrl(baseWithTrailingSlash, pathNoLeadingSlash) {
@@ -57,15 +72,15 @@ export async function fetchMockRequiredIngestionFields() {
   try {
     resp = await fetch(url, { method: "GET" });
   } catch {
-    throw new Error("Unable to reach server. Please try again.");
+    throw new Error(`Unable to reach server (${url}). Please try again.`);
   }
 
   if (!resp.ok) {
-    throw await buildError(resp);
+    throw await buildError(resp, url);
   }
 
   const data = await tryReadJson(resp);
-  if (data === null) throw new Error("Unexpected server response (not JSON).");
+  if (data === null) throw new Error(`Unexpected server response (not JSON) from ${url}.`);
   return data;
 }
 
