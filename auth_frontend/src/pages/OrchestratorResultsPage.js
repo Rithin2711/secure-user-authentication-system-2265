@@ -9,9 +9,10 @@ import { fetchMockRequiredIngestionFields } from "../services/ingestionApi";
  * - Render 4 agent selector blocks: Ingestion, Validation, Inventory, Pricing.
  * - Allow selecting an agent; the selected agent is visually highlighted.
  * - Render the selected agent output below:
- *   - Ingestion TAB: calls backend GET /mock on tab click and renders:
- *        - heading: "Required Ingestion field"
- *        - key/value pairs in a table
+ *   - Ingestion TAB: calls backend GET /mock (on open + on click) and renders:
+ *        - payload.message
+ *        - payload.meta (key/value table)
+ *        - payload.items as a multi-row table
  *   - Others: placeholders for now.
  *
  * Routing:
@@ -33,6 +34,14 @@ function previewValue(value) {
   if (typeof value === "string") return value.trim() ? value : "—";
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
+}
+
+function getMockPayloadShape(mockData) {
+  const payload = mockData?.payload;
+  const message = typeof payload?.message === "string" ? payload.message : "";
+  const meta = payload?.meta && typeof payload.meta === "object" ? payload.meta : null;
+  const items = Array.isArray(payload?.items) ? payload.items : [];
+  return { payload, message, meta, items };
 }
 
 // PUBLIC_INTERFACE
@@ -58,6 +67,30 @@ export default function OrchestratorResultsPage() {
     }
     return "User";
   }, []);
+
+  const loadMock = async () => {
+    // PUBLIC_INTERFACE
+    /** Fetches /mock payload for the Ingestion tab and updates local status. */
+    setMockStatus("loading");
+    setMockError("");
+    try {
+      const data = await fetchMockRequiredIngestionFields();
+      setMockData(data);
+      setMockStatus("success");
+    } catch (e) {
+      setMockData(null);
+      setMockError(e instanceof Error ? e.message : "Failed to load /mock response.");
+      setMockStatus("error");
+    }
+  };
+
+  // Ensure /mock is fetched when the ingestion tab is opened (initial page load, and whenever user returns to ingestion).
+  useEffect(() => {
+    if (selectedAgent !== "ingestion") return;
+    if (mockStatus !== "idle") return;
+    loadMock();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAgent]);
 
   // Close user menu on outside click / Escape for expected UX.
   useEffect(() => {
@@ -86,7 +119,7 @@ export default function OrchestratorResultsPage() {
       {
         key: "ingestion",
         title: "Ingestion",
-        subtitle: "Required ingestion fields (from /mock)",
+        subtitle: "Render /mock payload.message, payload.meta, and payload.items",
         status: "success",
       },
       {
@@ -182,22 +215,10 @@ export default function OrchestratorResultsPage() {
       <button
         type="button"
         onClick={() => {
-          // Fetch /mock *on tab click* (only for ingestion).
+          // Fetch /mock on click (required behavior). Also works as manual refresh by re-clicking.
           if (agent.key === "ingestion") {
-            setMockStatus("loading");
-            setMockError("");
-            fetchMockRequiredIngestionFields()
-              .then((data) => {
-                setMockData(data);
-                setMockStatus("success");
-              })
-              .catch((e) => {
-                setMockData(null);
-                setMockError(e instanceof Error ? e.message : "Failed to load required ingestion fields.");
-                setMockStatus("error");
-              });
+            loadMock();
           }
-
           setSelectedAgent(agent.key);
         }}
         aria-pressed={isSelected}
@@ -274,12 +295,25 @@ export default function OrchestratorResultsPage() {
   };
 
   const renderIngestionTabOutput = () => {
-    const rows = toKeyValueRows(mockData);
+    const { message, meta, items } = getMockPayloadShape(mockData);
+    const metaRows = toKeyValueRows(meta);
+
+    const itemColumns = useMemo(() => {
+      const first = items?.[0];
+      if (!first || typeof first !== "object") return ["id", "name", "status"];
+      const keys = Object.keys(first).map(String);
+      // Keep preferred order when possible.
+      const preferred = ["id", "name", "status"];
+      const rest = keys.filter((k) => !preferred.includes(k)).sort((a, b) => a.localeCompare(b));
+      const merged = [...preferred.filter((k) => keys.includes(k)), ...rest];
+      return merged.length ? merged : preferred;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [Array.isArray(items) ? items.length : 0]);
 
     return (
       <div
         role="region"
-        aria-label="Required ingestion fields"
+        aria-label="Ingestion mock response"
         style={{
           marginTop: 14,
           borderRadius: 16,
@@ -288,16 +322,10 @@ export default function OrchestratorResultsPage() {
           padding: 14,
         }}
       >
-        <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>Required Ingestion field</div>
+        <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>Ingestion · /mock response</div>
         <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.66)" }}>
           Source: <code style={{ color: "rgba(255,255,255,0.82)" }}>/mock</code>
         </div>
-
-        {mockStatus === "idle" ? (
-          <div style={{ marginTop: 10, fontSize: 13, color: "rgba(255,255,255,0.72)", lineHeight: 1.5 }}>
-            Click the <span style={{ color: "rgba(255,255,255,0.92)", fontWeight: 900 }}>Ingestion</span> tab to load required fields.
-          </div>
-        ) : null}
 
         {mockStatus === "loading" ? (
           <div
@@ -311,9 +339,7 @@ export default function OrchestratorResultsPage() {
             }}
           >
             <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>Loading…</div>
-            <div style={{ marginTop: 6, color: "rgba(255,255,255,0.80)", fontSize: 13, lineHeight: 1.45 }}>
-              Fetching required ingestion fields from the backend.
-            </div>
+            <div style={{ marginTop: 6, color: "rgba(255,255,255,0.80)", fontSize: 13, lineHeight: 1.45 }}>Fetching /mock JSON.</div>
           </div>
         ) : null}
 
@@ -328,7 +354,7 @@ export default function OrchestratorResultsPage() {
               background: "rgba(239,68,68,0.12)",
             }}
           >
-            <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>Unable to load required fields</div>
+            <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>Unable to load /mock</div>
             <div style={{ marginTop: 6, color: "rgba(255,255,255,0.86)", fontSize: 13, lineHeight: 1.45 }}>
               {mockError || "Request failed."}
             </div>
@@ -338,23 +364,12 @@ export default function OrchestratorResultsPage() {
         {mockStatus === "success" ? (
           <div style={{ marginTop: 12 }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>{rows.length} fields</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>
+                Items: <span style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950 }}>{items.length}</span>
+              </div>
               <button
                 type="button"
-                onClick={() => {
-                  setMockStatus("loading");
-                  setMockError("");
-                  fetchMockRequiredIngestionFields()
-                    .then((data) => {
-                      setMockData(data);
-                      setMockStatus("success");
-                    })
-                    .catch((e) => {
-                      setMockData(null);
-                      setMockError(e instanceof Error ? e.message : "Failed to load required ingestion fields.");
-                      setMockStatus("error");
-                    });
-                }}
+                onClick={loadMock}
                 style={{
                   borderRadius: 999,
                   border: "1px solid rgba(255,255,255,0.16)",
@@ -366,81 +381,195 @@ export default function OrchestratorResultsPage() {
                   fontWeight: 900,
                   letterSpacing: "-0.01em",
                 }}
-                aria-label="Refresh required ingestion fields"
+                aria-label="Refresh /mock response"
               >
                 Refresh
               </button>
             </div>
 
-            <div
-              style={{
-                marginTop: 10,
-                borderRadius: 14,
-                border: "1px solid rgba(255,255,255,0.14)",
-                background: "rgba(0,0,0,0.14)",
-                overflow: "hidden",
-              }}
-            >
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 560 }}>
-                  <thead>
-                    <tr>
-                      <th
-                        align="left"
-                        style={{
-                          position: "sticky",
-                          top: 0,
-                          zIndex: 1,
-                          padding: "12px 12px",
-                          fontSize: 12,
-                          fontWeight: 950,
-                          letterSpacing: "-0.01em",
-                          color: "rgba(255,255,255,0.86)",
-                          background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
-                          borderBottom: "1px solid rgba(255,255,255,0.10)",
-                        }}
-                      >
-                        Key
-                      </th>
-                      <th
-                        align="left"
-                        style={{
-                          position: "sticky",
-                          top: 0,
-                          zIndex: 1,
-                          padding: "12px 12px",
-                          fontSize: 12,
-                          fontWeight: 950,
-                          letterSpacing: "-0.01em",
-                          color: "rgba(255,255,255,0.86)",
-                          background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
-                          borderBottom: "1px solid rgba(255,255,255,0.10)",
-                        }}
-                      >
-                        Value
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map(([k, v], idx) => {
-                      const rowBg = idx % 2 === 0 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.01)";
-                      return (
-                        <tr key={k} style={{ background: rowBg }}>
-                          <td style={{ padding: "12px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", verticalAlign: "top" }}>
-                            <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.86)" }}>{k}</div>
-                          </td>
-                          <td style={{ padding: "12px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", verticalAlign: "top" }}>
-                            <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.90)", wordBreak: "break-word" }}>
-                              {previewValue(v)}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            {/* payload.message */}
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Message</div>
+              <div style={{ marginTop: 6, fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.90)", lineHeight: 1.45 }}>
+                {message ? message : "—"}
               </div>
             </div>
+
+            {/* payload.meta */}
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Meta</div>
+              <div
+                style={{
+                  marginTop: 8,
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(0,0,0,0.14)",
+                  overflow: "hidden",
+                }}
+              >
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 520 }}>
+                    <thead>
+                      <tr>
+                        <th
+                          align="left"
+                          style={{
+                            position: "sticky",
+                            top: 0,
+                            zIndex: 1,
+                            padding: "12px 12px",
+                            fontSize: 12,
+                            fontWeight: 950,
+                            letterSpacing: "-0.01em",
+                            color: "rgba(255,255,255,0.86)",
+                            background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
+                            borderBottom: "1px solid rgba(255,255,255,0.10)",
+                          }}
+                        >
+                          Key
+                        </th>
+                        <th
+                          align="left"
+                          style={{
+                            position: "sticky",
+                            top: 0,
+                            zIndex: 1,
+                            padding: "12px 12px",
+                            fontSize: 12,
+                            fontWeight: 950,
+                            letterSpacing: "-0.01em",
+                            color: "rgba(255,255,255,0.86)",
+                            background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
+                            borderBottom: "1px solid rgba(255,255,255,0.10)",
+                          }}
+                        >
+                          Value
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {metaRows.length ? (
+                        metaRows.map(([k, v], idx) => {
+                          const rowBg = idx % 2 === 0 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.01)";
+                          return (
+                            <tr key={k} style={{ background: rowBg }}>
+                              <td
+                                style={{
+                                  padding: "12px 12px",
+                                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                                  verticalAlign: "top",
+                                }}
+                              >
+                                <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.86)" }}>{k}</div>
+                              </td>
+                              <td
+                                style={{
+                                  padding: "12px 12px",
+                                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                                  verticalAlign: "top",
+                                }}
+                              >
+                                <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.90)", wordBreak: "break-word" }}>
+                                  {previewValue(v)}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={2} style={{ padding: "12px 12px", color: "rgba(255,255,255,0.72)", fontSize: 13 }}>
+                            —
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* payload.items */}
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Items</div>
+              <div
+                style={{
+                  marginTop: 8,
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(0,0,0,0.14)",
+                  overflow: "hidden",
+                }}
+              >
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 560 }}>
+                    <thead>
+                      <tr>
+                        {itemColumns.map((col) => (
+                          <th
+                            key={col}
+                            align="left"
+                            style={{
+                              position: "sticky",
+                              top: 0,
+                              zIndex: 1,
+                              padding: "12px 12px",
+                              fontSize: 12,
+                              fontWeight: 950,
+                              letterSpacing: "-0.01em",
+                              color: "rgba(255,255,255,0.86)",
+                              background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
+                              borderBottom: "1px solid rgba(255,255,255,0.10)",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {col}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.length ? (
+                        items.map((it, idx) => {
+                          const rowBg = idx % 2 === 0 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.01)";
+                          const rowKey = it && typeof it === "object" && (it.id || it.name) ? `${it.id ?? ""}-${it.name ?? ""}-${idx}` : String(idx);
+                          return (
+                            <tr key={rowKey} style={{ background: rowBg }}>
+                              {itemColumns.map((col) => (
+                                <td
+                                  key={col}
+                                  style={{
+                                    padding: "12px 12px",
+                                    borderBottom: "1px solid rgba(255,255,255,0.06)",
+                                    verticalAlign: "top",
+                                  }}
+                                >
+                                  <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.90)", wordBreak: "break-word" }}>
+                                    {previewValue(it?.[col])}
+                                  </div>
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={itemColumns.length} style={{ padding: "12px 12px", color: "rgba(255,255,255,0.72)", fontSize: 13 }}>
+                            No items returned.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {mockStatus === "idle" ? (
+          <div style={{ marginTop: 10, fontSize: 13, color: "rgba(255,255,255,0.72)", lineHeight: 1.5 }}>
+            Opening the Ingestion tab will load <code style={{ color: "rgba(255,255,255,0.82)" }}>/mock</code>.
           </div>
         ) : null}
       </div>
