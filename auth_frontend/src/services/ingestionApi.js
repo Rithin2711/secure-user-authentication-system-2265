@@ -1,15 +1,14 @@
 /**
  * Ingestion API client.
  *
- * Calls the backend ingestion endpoint and returns the parsed JSON response.
+ * IMPORTANT (behavior split):
+ * - "Workflow ingestion output page" (IngestionOutputPage) uses fetchIngestionResult().
+ * - The Orchestrator "Ingestion" TAB (agent selector) should use fetchMockRequiredIngestionFields()
+ *   to call GET /mock and render "Required Ingestion field".
  *
  * Env resolution:
  * - Prefer REACT_APP_BACKEND_URL (or REACT_APP_API_BASE) when set.
- * - Fall back to the explicit URL provided in the task to keep the UI working in preview.
- *
- * IMPORTANT:
- * - The user-provided backend URL is itself the endpoint that returns JSON.
- *   So we call it directly (GET preferred; POST fallback) and do not append extra paths.
+ * - Fall back to the explicit preview URL provided in the task to keep the UI working.
  */
 
 function normalizeEndpoint(url) {
@@ -36,10 +35,46 @@ async function buildError(resp) {
   return new Error(msg);
 }
 
+function joinUrl(baseWithTrailingSlash, pathNoLeadingSlash) {
+  return `${String(baseWithTrailingSlash || "")}${String(pathNoLeadingSlash || "").replace(/^\/+/, "")}`;
+}
+
+// PUBLIC_INTERFACE
+export async function fetchMockRequiredIngestionFields() {
+  /**
+   * Fetch required ingestion fields from the backend mock endpoint.
+   *
+   * This is used by the Orchestrator "Ingestion" tab (NOT the workflow ingestion output page).
+   *
+   * Endpoint:
+   * - GET {ENDPOINT}/mock
+   *
+   * @returns {Promise<any>} Parsed JSON response from /mock
+   */
+  const url = joinUrl(ENDPOINT, "mock");
+
+  let resp;
+  try {
+    resp = await fetch(url, { method: "GET" });
+  } catch {
+    throw new Error("Unable to reach server. Please try again.");
+  }
+
+  if (!resp.ok) {
+    throw await buildError(resp);
+  }
+
+  const data = await tryReadJson(resp);
+  if (data === null) throw new Error("Unexpected server response (not JSON).");
+  return data;
+}
+
 // PUBLIC_INTERFACE
 export async function fetchIngestionResult({ payload } = {}) {
   /**
    * Fetch ingestion result JSON from backend.
+   *
+   * This remains the function used by IngestionOutputPage (workflow ingestion output page).
    *
    * Implementation:
    * - First try GET ENDPOINT (common for simple "return JSON" endpoints).

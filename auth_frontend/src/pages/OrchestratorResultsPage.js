@@ -1,25 +1,49 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import IngestionOutputPage from "./IngestionOutputPage";
+import { fetchMockRequiredIngestionFields } from "../services/ingestionApi";
 
 /**
- * Work Flow Results Page (UI-only).
+ * Work Flow Results Page (UI-only + small backend call on ingestion TAB click).
  *
  * Responsibilities:
  * - Provide a dashboard-like header (matching Upload page top bar styling).
  * - Render 4 agent selector blocks: Ingestion, Validation, Inventory, Pricing.
  * - Allow selecting an agent; the selected agent is visually highlighted.
  * - Render the selected agent output below:
- *   - Ingestion: uses the existing IngestionOutputPage (wired to sessionStorage payload).
+ *   - Ingestion TAB: calls backend GET /mock on tab click and renders:
+ *        - heading: "Required Ingestion field"
+ *        - key/value pairs in a table
  *   - Others: placeholders for now.
  *
  * Routing:
  * - Accessible via hash route: #/orchestrator
  */
 
+function toKeyValueRows(payload) {
+  if (payload === null || payload === undefined) return [];
+  if (typeof payload !== "object") return [["value", String(payload)]];
+
+  // Prefer stable ordering for predictable UI.
+  return Object.entries(payload)
+    .map(([k, v]) => [String(k), v])
+    .sort((a, b) => a[0].localeCompare(b[0]));
+}
+
+function previewValue(value) {
+  if (value === undefined || value === null) return "—";
+  if (typeof value === "string") return value.trim() ? value : "—";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
 // PUBLIC_INTERFACE
 export default function OrchestratorResultsPage() {
   /** Orchestrator results shell with agent selectors + output area. */
   const [selectedAgent, setSelectedAgent] = useState("ingestion"); // ingestion | validation | inventory | pricing
+
+  // Ingestion TAB data (from /mock)
+  const [mockStatus, setMockStatus] = useState("idle"); // idle | loading | success | error
+  const [mockData, setMockData] = useState(null);
+  const [mockError, setMockError] = useState("");
 
   // Top dashboard user menu state
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -62,7 +86,7 @@ export default function OrchestratorResultsPage() {
       {
         key: "ingestion",
         title: "Ingestion",
-        subtitle: "Extract data from input (wired)",
+        subtitle: "Required ingestion fields (from /mock)",
         status: "success",
       },
       {
@@ -157,7 +181,25 @@ export default function OrchestratorResultsPage() {
     return (
       <button
         type="button"
-        onClick={() => setSelectedAgent(agent.key)}
+        onClick={() => {
+          // Fetch /mock *on tab click* (only for ingestion).
+          if (agent.key === "ingestion") {
+            setMockStatus("loading");
+            setMockError("");
+            fetchMockRequiredIngestionFields()
+              .then((data) => {
+                setMockData(data);
+                setMockStatus("success");
+              })
+              .catch((e) => {
+                setMockData(null);
+                setMockError(e instanceof Error ? e.message : "Failed to load required ingestion fields.");
+                setMockStatus("error");
+              });
+          }
+
+          setSelectedAgent(agent.key);
+        }}
         aria-pressed={isSelected}
         aria-label={`Select ${agent.title} agent`}
         style={{
@@ -231,10 +273,183 @@ export default function OrchestratorResultsPage() {
     );
   };
 
+  const renderIngestionTabOutput = () => {
+    const rows = toKeyValueRows(mockData);
+
+    return (
+      <div
+        role="region"
+        aria-label="Required ingestion fields"
+        style={{
+          marginTop: 14,
+          borderRadius: 16,
+          border: "1px solid rgba(255,255,255,0.14)",
+          background: "rgba(0,0,0,0.12)",
+          padding: 14,
+        }}
+      >
+        <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>Required Ingestion field</div>
+        <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.66)" }}>
+          Source: <code style={{ color: "rgba(255,255,255,0.82)" }}>/mock</code>
+        </div>
+
+        {mockStatus === "idle" ? (
+          <div style={{ marginTop: 10, fontSize: 13, color: "rgba(255,255,255,0.72)", lineHeight: 1.5 }}>
+            Click the <span style={{ color: "rgba(255,255,255,0.92)", fontWeight: 900 }}>Ingestion</span> tab to load required fields.
+          </div>
+        ) : null}
+
+        {mockStatus === "loading" ? (
+          <div
+            role="status"
+            style={{
+              marginTop: 12,
+              padding: "12px 12px",
+              borderRadius: 14,
+              border: "1px solid rgba(59,130,246,0.28)",
+              background: "rgba(59,130,246,0.10)",
+            }}
+          >
+            <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>Loading…</div>
+            <div style={{ marginTop: 6, color: "rgba(255,255,255,0.80)", fontSize: 13, lineHeight: 1.45 }}>
+              Fetching required ingestion fields from the backend.
+            </div>
+          </div>
+        ) : null}
+
+        {mockStatus === "error" ? (
+          <div
+            role="alert"
+            style={{
+              marginTop: 12,
+              padding: "12px 12px",
+              borderRadius: 14,
+              border: "1px solid rgba(239,68,68,0.40)",
+              background: "rgba(239,68,68,0.12)",
+            }}
+          >
+            <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>Unable to load required fields</div>
+            <div style={{ marginTop: 6, color: "rgba(255,255,255,0.86)", fontSize: 13, lineHeight: 1.45 }}>
+              {mockError || "Request failed."}
+            </div>
+          </div>
+        ) : null}
+
+        {mockStatus === "success" ? (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>{rows.length} fields</div>
+              <button
+                type="button"
+                onClick={() => {
+                  setMockStatus("loading");
+                  setMockError("");
+                  fetchMockRequiredIngestionFields()
+                    .then((data) => {
+                      setMockData(data);
+                      setMockStatus("success");
+                    })
+                    .catch((e) => {
+                      setMockData(null);
+                      setMockError(e instanceof Error ? e.message : "Failed to load required ingestion fields.");
+                      setMockStatus("error");
+                    });
+                }}
+                style={{
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.16)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "rgba(255,255,255,0.92)",
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 900,
+                  letterSpacing: "-0.01em",
+                }}
+                aria-label="Refresh required ingestion fields"
+              >
+                Refresh
+              </button>
+            </div>
+
+            <div
+              style={{
+                marginTop: 10,
+                borderRadius: 14,
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(0,0,0,0.14)",
+                overflow: "hidden",
+              }}
+            >
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 560 }}>
+                  <thead>
+                    <tr>
+                      <th
+                        align="left"
+                        style={{
+                          position: "sticky",
+                          top: 0,
+                          zIndex: 1,
+                          padding: "12px 12px",
+                          fontSize: 12,
+                          fontWeight: 950,
+                          letterSpacing: "-0.01em",
+                          color: "rgba(255,255,255,0.86)",
+                          background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
+                          borderBottom: "1px solid rgba(255,255,255,0.10)",
+                        }}
+                      >
+                        Key
+                      </th>
+                      <th
+                        align="left"
+                        style={{
+                          position: "sticky",
+                          top: 0,
+                          zIndex: 1,
+                          padding: "12px 12px",
+                          fontSize: 12,
+                          fontWeight: 950,
+                          letterSpacing: "-0.01em",
+                          color: "rgba(255,255,255,0.86)",
+                          background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
+                          borderBottom: "1px solid rgba(255,255,255,0.10)",
+                        }}
+                      >
+                        Value
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(([k, v], idx) => {
+                      const rowBg = idx % 2 === 0 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.01)";
+                      return (
+                        <tr key={k} style={{ background: rowBg }}>
+                          <td style={{ padding: "12px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", verticalAlign: "top" }}>
+                            <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.86)" }}>{k}</div>
+                          </td>
+                          <td style={{ padding: "12px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", verticalAlign: "top" }}>
+                            <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.90)", wordBreak: "break-word" }}>
+                              {previewValue(v)}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
   const renderOutput = () => {
     if (selectedAgent === "ingestion") {
-      // Reuse the existing ingestion output implementation as-is.
-      return <IngestionOutputPage />;
+      return renderIngestionTabOutput();
     }
 
     const placeholderTitle =
@@ -542,15 +757,7 @@ export default function OrchestratorResultsPage() {
           </div>
 
           {/* Output */}
-          <div style={{ marginTop: 16 }}>
-            {selectedAgent === "ingestion" ? (
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)", marginBottom: 8 }}>
-                Ingestion reads <code style={{ color: "rgba(255,255,255,0.82)" }}>sessionStorage.intake_agent_extracted_json</code>.
-              </div>
-            ) : null}
-
-            {renderOutput()}
-          </div>
+          <div style={{ marginTop: 16 }}>{renderOutput()}</div>
         </div>
       </section>
     </main>
