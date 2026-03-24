@@ -294,21 +294,29 @@ export default function OrchestratorResultsPage() {
     );
   };
 
+  // Memoize columns derived from the current /mock items array.
+  // Hook must live in a React component (this one), not in a nested render helper.
+  const ingestionItemColumns = useMemo(() => {
+    const { items } = getMockPayloadShape(mockData);
+    const first = items?.[0];
+
+    const preferred = ["id", "name", "status"];
+
+    if (!first || typeof first !== "object") return preferred;
+
+    const keys = Object.keys(first).map(String);
+
+    // Keep preferred order when possible; append the rest sorted for stable UI.
+    const rest = keys.filter((k) => !preferred.includes(k)).sort((a, b) => a.localeCompare(b));
+    const merged = [...preferred.filter((k) => keys.includes(k)), ...rest];
+
+    return merged.length ? merged : preferred;
+  }, [mockData]);
+
   const renderIngestionTabOutput = () => {
     const { message, meta, items } = getMockPayloadShape(mockData);
     const metaRows = toKeyValueRows(meta);
-
-    const itemColumns = useMemo(() => {
-      const first = items?.[0];
-      if (!first || typeof first !== "object") return ["id", "name", "status"];
-      const keys = Object.keys(first).map(String);
-      // Keep preferred order when possible.
-      const preferred = ["id", "name", "status"];
-      const rest = keys.filter((k) => !preferred.includes(k)).sort((a, b) => a.localeCompare(b));
-      const merged = [...preferred.filter((k) => keys.includes(k)), ...rest];
-      return merged.length ? merged : preferred;
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [Array.isArray(items) ? items.length : 0]);
+    const itemColumns = ingestionItemColumns;
 
     return (
       <div
