@@ -273,7 +273,7 @@ export default function OrchestratorResultsPage() {
     return (
       <div
         role="region"
-        aria-label="Ingestion workspace"
+        aria-label="Ingestion layer output"
         style={{
           marginTop: 14,
           borderRadius: 16,
@@ -283,83 +283,28 @@ export default function OrchestratorResultsPage() {
         }}
       >
         <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>
-          Ingestion · backend message
-        </div>
-        <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.66)" }}>
-          Source: <code style={{ color: "rgba(255,255,255,0.82)" }}>/error-message</code>
+          Ingestion layer
         </div>
 
-        <div
-          role="region"
-          aria-label="Backend error message"
+        <pre
           style={{
-            marginTop: 12,
-            padding: "12px 12px",
-            borderRadius: 14,
-            border: "1px solid rgba(255,255,255,0.14)",
-            background: "rgba(0,0,0,0.10)",
+            marginTop: 10,
+            marginBottom: 0,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: "rgba(255,255,255,0.86)",
+            fontFamily:
+              'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
           }}
         >
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-            <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.90)" }}>
-              Backend · <code style={{ color: "rgba(255,255,255,0.90)" }}>/error-message</code>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>
-                Status:{" "}
-                <span style={{ color: "rgba(255,255,255,0.86)", fontWeight: 850 }}>
-                  {backendErrorStatus === "loading"
-                    ? "Loading…"
-                    : backendErrorStatus === "success"
-                      ? "Loaded"
-                      : backendErrorStatus === "error"
-                        ? "Error"
-                        : "Idle"}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={loadBackendErrorMessage}
-                style={{
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.16)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "rgba(255,255,255,0.92)",
-                  padding: "8px 10px",
-                  cursor: "pointer",
-                  fontSize: 12,
-                  fontWeight: 900,
-                  letterSpacing: "-0.01em",
-                }}
-                aria-label="Refresh /error-message"
-              >
-                Refresh
-              </button>
-            </div>
-          </div>
-
-          <pre
-            style={{
-              marginTop: 10,
-              marginBottom: 0,
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              fontSize: 13,
-              lineHeight: 1.5,
-              color: "rgba(255,255,255,0.86)",
-              fontFamily:
-                'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-            }}
-          >
-            {backendErrorText && backendErrorText.trim()
-              ? backendErrorText
-              : backendErrorStatus === "loading"
-                ? "Fetching /error-message…"
-                : "No message returned."}
-          </pre>
-        </div>
+          {backendErrorText && backendErrorText.trim()
+            ? backendErrorText
+            : backendErrorStatus === "loading"
+              ? ""
+              : ""}
+        </pre>
       </div>
     );
   };
