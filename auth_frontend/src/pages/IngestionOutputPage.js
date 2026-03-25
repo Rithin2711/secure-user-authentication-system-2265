@@ -98,6 +98,26 @@ export default function IngestionOutputPage() {
               <div style={{ marginTop: 6, color: "rgba(255,255,255,0.86)", fontSize: 13, lineHeight: 1.45 }}>
                 {errorMessage || "Request failed."}
               </div>
+
+              <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  style={{
+                    borderRadius: 999,
+                    border: "1px solid rgba(255,255,255,0.16)",
+                    background: "rgba(255,255,255,0.06)",
+                    color: "rgba(255,255,255,0.92)",
+                    padding: "8px 10px",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 900,
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  Retry
+                </button>
+              </div>
             </div>
           ) : null}
 

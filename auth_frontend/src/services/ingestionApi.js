@@ -5,51 +5,13 @@
  * - "Workflow ingestion output page" (IngestionOutputPage) uses fetchMockRequiredIngestionFields()
  *   to call GET /mock and render the returned JSON.
  *
- * Env resolution:
- * - Prefer REACT_APP_BACKEND_URL (or REACT_APP_API_BASE) when set.
- * - No hardcoded fallback URL here: deployments must configure an env var.
+ * This module must never return an undefined "response" object. It should either:
+ * - return parsed JSON, or
+ * - throw an Error with a friendly message.
  */
+import { apiFetchJson, getBackendBaseUrl } from "./apiClient";
 
-function normalizeEndpoint(url) {
-  const u = String(url || "").trim();
-  // Keep exactly one trailing slash for consistency, but do not change the path.
-  return u.endsWith("/") ? u : `${u}/`;
-}
-
-const ENDPOINT = normalizeEndpoint(process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_BASE);
-
-async function tryReadJson(resp) {
-  try {
-    return await resp.json();
-  } catch {
-    return null;
-  }
-}
-
-async function buildError(resp, url) {
-  const data = await tryReadJson(resp);
-
-  // Try to extract meaningful text for common "Not Found" HTML/plaintext responses.
-  let bodyText = "";
-  try {
-    bodyText = await resp.clone().text();
-  } catch {
-    bodyText = "";
-  }
-
-  const msg =
-    data?.detail ||
-    data?.message ||
-    (bodyText && bodyText.length < 240 ? bodyText : "") ||
-    `Request failed (${resp.status})`;
-
-  const where = url ? ` (${url})` : "";
-  return new Error(`${msg}${where}`);
-}
-
-function joinUrl(baseWithTrailingSlash, pathNoLeadingSlash) {
-  return `${String(baseWithTrailingSlash || "")}${String(pathNoLeadingSlash || "").replace(/^\/+/, "")}`;
-}
+const ENDPOINT = getBackendBaseUrl();
 
 // PUBLIC_INTERFACE
 export async function fetchMockRequiredIngestionFields() {
@@ -59,30 +21,27 @@ export async function fetchMockRequiredIngestionFields() {
    * Endpoint:
    * - GET {REACT_APP_BACKEND_URL || REACT_APP_API_BASE}/mock
    *
-   * @returns {Promise<any>} Parsed JSON response from /mock
+   * Expected successful response shape (authoritative reference from user_input_ref):
+   * {
+   *   request_id: string,
+   *   version: string,
+   *   generated_at: string (ISO),
+   *   advertiser_and_product_information: object,
+   *   campaign_details: object,
+   *   budget_and_financials: object,
+   *   linear_details: object,
+   *   digital_details: object
+   * }
+   *
+   * @returns {Promise<any>} Parsed JSON response from /mock (unmodified)
    */
-  if (!ENDPOINT) {
-    throw new Error(
-      "Backend URL is not configured. Set REACT_APP_BACKEND_URL (or REACT_APP_API_BASE) to your backend base URL (e.g. https://your-backend.example.com/)."
-    );
+  const res = await apiFetchJson("mock", { method: "GET", baseUrl: ENDPOINT, allowRelative: false });
+
+  if (!res.ok) {
+    throw new Error(res.error?.message || "Unable to load /mock payload.");
   }
 
-  const url = joinUrl(ENDPOINT, "mock");
-
-  let resp;
-  try {
-    resp = await fetch(url, { method: "GET" });
-  } catch {
-    throw new Error(`Unable to reach server (${url}). Please try again.`);
-  }
-
-  if (!resp.ok) {
-    throw await buildError(resp, url);
-  }
-
-  const data = await tryReadJson(resp);
-  if (data === null) throw new Error(`Unexpected server response (not JSON) from ${url}.`);
-  return data;
+  return res.data;
 }
 
 // PUBLIC_INTERFACE
@@ -94,47 +53,21 @@ export async function fetchIngestionResult({ payload } = {}) {
    * @param {any} params.payload - Optional JSON payload for POST fallback.
    * @returns {Promise<any>} Parsed JSON response from backend.
    */
-  if (!ENDPOINT) {
-    throw new Error(
-      "Backend URL is not configured. Set REACT_APP_BACKEND_URL (or REACT_APP_API_BASE) to your backend base URL."
-    );
-  }
+  // Keep existing behavior, but do it with the consistent client shape.
+  // Note: This app's ingestion "real" endpoint is not defined; /mock is the stable UI dependency.
+  const baseUrl = ENDPOINT;
 
-  // GET
-  let resp;
-  try {
-    resp = await fetch(ENDPOINT, { method: "GET" });
-  } catch {
-    throw new Error("Unable to reach ingestion backend. Please try again.");
-  }
-
-  if (resp.ok) {
-    const data = await tryReadJson(resp);
-    if (data === null) throw new Error("Unexpected server response (not JSON).");
-    return data;
-  }
+  // GET base (root)
+  let res = await apiFetchJson("", { method: "GET", baseUrl, allowRelative: false });
+  if (res.ok) return res.data;
 
   // If backend doesn't allow GET or expects payload, try POST fallback.
-  if (![404, 405].includes(resp.status)) {
-    throw await buildError(resp);
+  if (![404, 405].includes(res.status)) {
+    throw new Error(res.error?.message || "Ingestion request failed.");
   }
 
-  // POST
-  try {
-    resp = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload ?? {}),
-    });
-  } catch {
-    throw new Error("Unable to reach ingestion backend. Please try again.");
-  }
-
-  if (!resp.ok) {
-    throw await buildError(resp);
-  }
-
-  const data = await tryReadJson(resp);
-  if (data === null) throw new Error("Unexpected server response (not JSON).");
-  return data;
+  // POST base (root)
+  res = await apiFetchJson("", { method: "POST", baseUrl, allowRelative: false, body: payload ?? {} });
+  if (!res.ok) throw new Error(res.error?.message || "Ingestion request failed.");
+  return res.data;
 }
