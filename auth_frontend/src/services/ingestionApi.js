@@ -33,9 +33,19 @@ export async function fetchMockRequiredIngestionFields() {
    *   digital_details: object
    * }
    *
+   * Safety contract:
+   * - Must never attempt to read `.ok` from an undefined value.
+   * - Returns parsed JSON on success.
+   * - Throws an Error with a friendly message on failure.
+   *
    * @returns {Promise<any>} Parsed JSON response from /mock (unmodified)
    */
   const res = await apiFetchJson("mock", { method: "GET", baseUrl: ENDPOINT, allowRelative: false });
+
+  // Defensive guard: if an unexpected value is returned, do not crash.
+  if (!res || typeof res !== "object") {
+    throw new Error("Unable to load /mock payload (unexpected client response).");
+  }
 
   if (!res.ok) {
     throw new Error(res.error?.message || "Unable to load /mock payload.");

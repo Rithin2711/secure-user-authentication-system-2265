@@ -63,6 +63,10 @@ export async function apiFetchJson(path, { method = "GET", headers, body, baseUr
   /**
    * Fetch JSON from an API endpoint with a consistent return shape.
    *
+   * Key safety guarantee:
+   * - This function MUST ALWAYS resolve to an object that contains `{ ok: boolean, ... }`.
+   *   It must never return `undefined`, even if `fetch` throws or an unexpected error occurs.
+   *
    * @param {string} path - API path like "mock" or "/api/login"
    * @param {object=} options
    * @param {string=} options.method
@@ -99,42 +103,45 @@ export async function apiFetchJson(path, { method = "GET", headers, body, baseUr
     if (!finalHeaders["Content-Type"]) finalHeaders["Content-Type"] = "application/json";
   }
 
-  let resp;
   try {
-    resp = await fetch(url, { method, headers: finalHeaders, body: finalBody });
-  } catch {
+    const resp = await fetch(url, { method, headers: finalHeaders, body: finalBody });
+
+    const json = await tryReadJson(resp);
+    if (resp.ok) {
+      // Successful but non-JSON is considered an error for these APIs.
+      if (json === null) {
+        const text = await tryReadText(resp.clone());
+        return {
+          ok: false,
+          status: resp.status,
+          data: null,
+          error: { message: `Unexpected server response (not JSON) from ${url}.`, details: text || null },
+          url,
+        };
+      }
+
+      return { ok: true, status: resp.status, data: json, error: null, url };
+    }
+
+    const text = json === null ? await tryReadText(resp.clone()) : "";
+    return {
+      ok: false,
+      status: resp.status,
+      data: json, // may be null if non-JSON error
+      error: { message: `${toErrorMessage({ json, text, status: resp.status })} (${url})`, details: json || text || null },
+      url,
+    };
+  } catch (e) {
+    // Network errors (CORS/DNS/backend down) or any unexpected error:
+    // return a stable shape so UI never tries to read `.ok` from undefined.
+    const details =
+      e && typeof e === "object" && "message" in e && typeof e.message === "string" ? e.message : String(e || "");
     return {
       ok: false,
       status: 0,
       data: null,
-      error: { message: `Unable to reach server (${url}). Please try again.` },
+      error: { message: `Unable to reach server (${url}). Please try again.`, details: details || null },
       url,
     };
   }
-
-  const json = await tryReadJson(resp);
-  if (resp.ok) {
-    // Successful but non-JSON is considered an error for these APIs.
-    if (json === null) {
-      const text = await tryReadText(resp.clone());
-      return {
-        ok: false,
-        status: resp.status,
-        data: null,
-        error: { message: `Unexpected server response (not JSON) from ${url}.`, details: text || null },
-        url,
-      };
-    }
-
-    return { ok: true, status: resp.status, data: json, error: null, url };
-  }
-
-  const text = json === null ? await tryReadText(resp.clone()) : "";
-  return {
-    ok: false,
-    status: resp.status,
-    data: json, // may be null if non-JSON error
-    error: { message: `${toErrorMessage({ json, text, status: resp.status })} (${url})`, details: json || text || null },
-    url,
-  };
 }
