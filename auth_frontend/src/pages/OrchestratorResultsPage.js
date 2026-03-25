@@ -1,17 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { fetchBackendErrorMessage, fetchMockRequiredIngestionFields } from "../services/ingestionApi";
-import JsonTable from "../components/JsonTable";
+import { fetchBackendErrorMessage } from "../services/ingestionApi";
 
 /**
- * Work Flow Results Page (UI-only + small backend call on ingestion TAB click).
+ * Work Flow Results Page.
  *
  * Responsibilities:
  * - Provide a dashboard-like header (matching Upload page top bar styling).
  * - Render 4 agent selector blocks: Ingestion, Validation, Inventory, Pricing.
  * - Allow selecting an agent; the selected agent is visually highlighted.
  * - Render the selected agent output below:
- *   - Ingestion TAB: calls backend GET /mock (on open + on click) and renders the returned JSON as tables
- *     (including nested objects and arrays) using existing table UI patterns.
+ *   - Ingestion TAB: displays backend GET /error-message (plain text).
  *   - Others: placeholders for now.
  *
  * Routing:
@@ -22,11 +20,6 @@ import JsonTable from "../components/JsonTable";
 export default function OrchestratorResultsPage() {
   /** Orchestrator results shell with agent selectors + output area. */
   const [selectedAgent, setSelectedAgent] = useState("ingestion"); // ingestion | validation | inventory | pricing
-
-  // Ingestion TAB data (from /mock)
-  const [mockStatus, setMockStatus] = useState("idle"); // idle | loading | success | error
-  const [mockData, setMockData] = useState(null);
-  const [mockError, setMockError] = useState("");
 
   // Ingestion TAB backend error string (from /error-message)
   const [backendErrorStatus, setBackendErrorStatus] = useState("idle"); // idle | loading | success | error
@@ -64,31 +57,11 @@ export default function OrchestratorResultsPage() {
     }
   };
 
-  const loadMock = async () => {
-    // PUBLIC_INTERFACE
-    /** Fetches /mock payload for the Ingestion tab and updates local status. */
-    setMockStatus("loading");
-    setMockError("");
-
-    // Also refresh the backend error message whenever ingestion is refreshed.
-    loadBackendErrorMessage();
-
-    try {
-      const data = await fetchMockRequiredIngestionFields();
-      setMockData(data);
-      setMockStatus("success");
-    } catch (e) {
-      setMockData(null);
-      setMockError(e instanceof Error ? e.message : "Failed to load /mock response.");
-      setMockStatus("error");
-    }
-  };
-
   // Ensure ingestion data is fetched when the ingestion tab is opened (initial page load, and whenever user returns to ingestion).
   useEffect(() => {
     if (selectedAgent !== "ingestion") return;
-    if (mockStatus !== "idle") return;
-    loadMock();
+    if (backendErrorStatus !== "idle") return;
+    loadBackendErrorMessage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAgent]);
 
@@ -119,7 +92,7 @@ export default function OrchestratorResultsPage() {
       {
         key: "ingestion",
         title: "Ingestion",
-        subtitle: "Fetch /mock and render JSON output in table format (nested objects/arrays supported)",
+        subtitle: "Display backend /error-message output",
         status: "success",
       },
       {
@@ -215,9 +188,9 @@ export default function OrchestratorResultsPage() {
       <button
         type="button"
         onClick={() => {
-          // Fetch /mock on click (required behavior). Also works as manual refresh by re-clicking.
+          // No /mock calls. Only refresh /error-message when user clicks Ingestion (or re-clicks to refresh).
           if (agent.key === "ingestion") {
-            loadMock();
+            loadBackendErrorMessage();
           }
           setSelectedAgent(agent.key);
         }}
@@ -288,24 +261,19 @@ export default function OrchestratorResultsPage() {
         </div>
 
         {agent.subtitle ? (
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.68)", marginTop: 8, lineHeight: 1.35 }}>{agent.subtitle}</div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.68)", marginTop: 8, lineHeight: 1.35 }}>
+            {agent.subtitle}
+          </div>
         ) : null}
       </button>
     );
   };
 
   const renderIngestionTabOutput = () => {
-    // IMPORTANT: render exactly what backend returns from /mock (no reshaping).
-    // The /mock endpoint returns a top-level JSON object; do not unwrap/transform.
-    const payloadRoot = mockData;
-
-    const topLevelEntries =
-      payloadRoot && typeof payloadRoot === "object" && !Array.isArray(payloadRoot) ? Object.entries(payloadRoot) : [];
-
     return (
       <div
         role="region"
-        aria-label="Ingestion mock response"
+        aria-label="Ingestion workspace"
         style={{
           marginTop: 14,
           borderRadius: 16,
@@ -314,12 +282,13 @@ export default function OrchestratorResultsPage() {
           padding: 14,
         }}
       >
-        <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>Ingestion · /mock response</div>
+        <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>
+          Ingestion · backend message
+        </div>
         <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.66)" }}>
-          Source: <code style={{ color: "rgba(255,255,255,0.82)" }}>/mock</code>
+          Source: <code style={{ color: "rgba(255,255,255,0.82)" }}>/error-message</code>
         </div>
 
-        {/* Backend error-message workspace (plain text) */}
         <div
           role="region"
           aria-label="Backend error message"
@@ -335,17 +304,39 @@ export default function OrchestratorResultsPage() {
             <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.90)" }}>
               Backend · <code style={{ color: "rgba(255,255,255,0.90)" }}>/error-message</code>
             </div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>
-              Status:{" "}
-              <span style={{ color: "rgba(255,255,255,0.86)", fontWeight: 850 }}>
-                {backendErrorStatus === "loading"
-                  ? "Loading…"
-                  : backendErrorStatus === "success"
-                    ? "Loaded"
-                    : backendErrorStatus === "error"
-                      ? "Error"
-                      : "Idle"}
-              </span>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>
+                Status:{" "}
+                <span style={{ color: "rgba(255,255,255,0.86)", fontWeight: 850 }}>
+                  {backendErrorStatus === "loading"
+                    ? "Loading…"
+                    : backendErrorStatus === "success"
+                      ? "Loaded"
+                      : backendErrorStatus === "error"
+                        ? "Error"
+                        : "Idle"}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={loadBackendErrorMessage}
+                style={{
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.16)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "rgba(255,255,255,0.92)",
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 900,
+                  letterSpacing: "-0.01em",
+                }}
+                aria-label="Refresh /error-message"
+              >
+                Refresh
+              </button>
             </div>
           </div>
 
@@ -369,98 +360,6 @@ export default function OrchestratorResultsPage() {
                 : "No message returned."}
           </pre>
         </div>
-
-        {mockStatus === "loading" ? (
-          <div
-            role="status"
-            style={{
-              marginTop: 12,
-              padding: "12px 12px",
-              borderRadius: 14,
-              border: "1px solid rgba(59,130,246,0.28)",
-              background: "rgba(59,130,246,0.10)",
-            }}
-          >
-            <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>Loading…</div>
-            <div style={{ marginTop: 6, color: "rgba(255,255,255,0.80)", fontSize: 13, lineHeight: 1.45 }}>Fetching /mock JSON.</div>
-          </div>
-        ) : null}
-
-        {mockStatus === "error" ? (
-          <div
-            role="alert"
-            style={{
-              marginTop: 12,
-              padding: "12px 12px",
-              borderRadius: 14,
-              border: "1px solid rgba(239,68,68,0.40)",
-              background: "rgba(239,68,68,0.12)",
-            }}
-          >
-            <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>Unable to load /mock</div>
-            <div style={{ marginTop: 6, color: "rgba(255,255,255,0.86)", fontSize: 13, lineHeight: 1.45 }}>{mockError || "Request failed."}</div>
-          </div>
-        ) : null}
-
-        {mockStatus === "success" ? (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Rendering /mock JSON in table form (exact keys/sections).</div>
-              <button
-                type="button"
-                onClick={loadMock}
-                style={{
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.16)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "rgba(255,255,255,0.92)",
-                  padding: "8px 10px",
-                  cursor: "pointer",
-                  fontSize: 12,
-                  fontWeight: 900,
-                  letterSpacing: "-0.01em",
-                }}
-                aria-label="Refresh /mock response"
-              >
-                Refresh
-              </button>
-            </div>
-
-            <div style={{ marginTop: 12 }}>
-              {!payloadRoot ? (
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)" }}>No payload returned.</div>
-              ) : typeof payloadRoot !== "object" || Array.isArray(payloadRoot) ? (
-                <JsonTable value={payloadRoot} minWidth={720} />
-              ) : (
-                <div>
-                  {topLevelEntries.map(([key, value]) => (
-                    <div
-                      key={String(key)}
-                      style={{
-                        marginTop: 12,
-                        padding: "12px 12px",
-                        borderRadius: 14,
-                        border: "1px solid rgba(255,255,255,0.14)",
-                        background: "rgba(0,0,0,0.14)",
-                      }}
-                    >
-                      <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.72)" }}>{String(key)}</div>
-                      <div style={{ marginTop: 8 }}>
-                        <JsonTable value={value} minWidth={720} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        ) : null}
-
-        {mockStatus === "idle" ? (
-          <div style={{ marginTop: 10, fontSize: 13, color: "rgba(255,255,255,0.72)", lineHeight: 1.5 }}>
-            Opening the Ingestion tab will load <code style={{ color: "rgba(255,255,255,0.82)" }}>/mock</code>.
-          </div>
-        ) : null}
       </div>
     );
   };

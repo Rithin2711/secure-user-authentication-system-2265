@@ -1,58 +1,17 @@
 /**
  * Ingestion API client.
  *
- * IMPORTANT (behavior split):
- * - "Workflow ingestion output page" (IngestionOutputPage) uses fetchMockRequiredIngestionFields()
- *   to call GET /mock and render the returned JSON.
- *
  * This module must never return an undefined "response" object. It should either:
- * - return parsed JSON, or
+ * - return parsed JSON/text, or
  * - throw an Error with a friendly message.
+ *
+ * NOTE:
+ * - The Workflow → Ingestion UI must no longer call `/mock`.
+ * - The only ingestion-specific UI call kept is GET `/error-message` (plain text).
  */
 import { apiFetchJson, apiFetchText, getBackendBaseUrl } from "./apiClient";
 
 const ENDPOINT = getBackendBaseUrl();
-
-// PUBLIC_INTERFACE
-export async function fetchMockRequiredIngestionFields() {
-  /**
-   * Fetch required ingestion fields from the backend mock endpoint.
-   *
-   * Endpoint:
-   * - GET {REACT_APP_BACKEND_URL || REACT_APP_API_BASE}/mock
-   *
-   * Expected successful response shape (authoritative reference from user_input_ref):
-   * {
-   *   request_id: string,
-   *   version: string,
-   *   generated_at: string (ISO),
-   *   advertiser_and_product_information: object,
-   *   campaign_details: object,
-   *   budget_and_financials: object,
-   *   linear_details: object,
-   *   digital_details: object
-   * }
-   *
-   * Safety contract:
-   * - Must never attempt to read `.ok` from an undefined value.
-   * - Returns parsed JSON on success.
-   * - Throws an Error with a friendly message on failure.
-   *
-   * @returns {Promise<any>} Parsed JSON response from /mock (unmodified)
-   */
-  const res = await apiFetchJson("mock", { method: "GET", baseUrl: ENDPOINT, allowRelative: false });
-
-  // Defensive guard: if an unexpected value is returned, do not crash.
-  if (!res || typeof res !== "object") {
-    throw new Error("Unable to load /mock payload (unexpected client response).");
-  }
-
-  if (!res.ok) {
-    throw new Error(res.error?.message || "Unable to load /mock payload.");
-  }
-
-  return res.data;
-}
 
 // PUBLIC_INTERFACE
 export async function fetchIngestionResult({ payload } = {}) {
@@ -63,8 +22,6 @@ export async function fetchIngestionResult({ payload } = {}) {
    * @param {any} params.payload - Optional JSON payload for POST fallback.
    * @returns {Promise<any>} Parsed JSON response from backend.
    */
-  // Keep existing behavior, but do it with the consistent client shape.
-  // Note: This app's ingestion "real" endpoint is not defined; /mock is the stable UI dependency.
   const baseUrl = ENDPOINT;
 
   // GET base (root)
