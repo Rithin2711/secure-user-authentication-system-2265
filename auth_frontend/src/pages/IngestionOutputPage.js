@@ -7,18 +7,39 @@ import { fetchIngestionWorkspaceResponse, submitIngestionWorkspaceInput } from "
  *
  * Requirement:
  * - Backend response can be either JSON or plain-text error.
- * - If JSON: render as tables.
- * - If error text: show the text under "Ingestion layer" heading + textbox + submit to send user input.
+ * - If JSON without an "error" key: render as tables.
+ * - If JSON with an "error" key: show the error message + textbox + submit to send user input.
+ * - If plain text: show the text + textbox + submit.
  * - Ensure UI shows only necessary elements (no endpoint/status/debug text).
  */
+
+function isPlainObject(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function extractErrorFromJson(value) {
+  // Backend contract for this task: JSON may contain { "error": <string> }.
+  // We treat any "error" field as a prompt/error state.
+  if (!isPlainObject(value)) return "";
+  if (!Object.prototype.hasOwnProperty.call(value, "error")) return "";
+
+  const e = value.error;
+  if (typeof e === "string") return e.trim();
+  if (e === null || e === undefined) return "An error occurred.";
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
+}
 
 // PUBLIC_INTERFACE
 export default function IngestionOutputPage() {
   /**
    * Workflow ingestion output page that displays backend ingestion output.
    * It conditionally renders:
-   * - JSON output via <JsonTable />
-   * - Plain text output with a user input submission box
+   * - JSON output via <JsonTable /> (only if JSON does NOT contain an "error" key)
+   * - Error/prompt text (from JSON.error or text response) + user input submission box
    */
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +54,10 @@ export default function IngestionOutputPage() {
     /** @type {"idle" | "submitting"} */ ("idle")
   );
 
-  const canSubmit = useMemo(() => submitState !== "submitting" && Boolean(String(userInput).trim()), [submitState, userInput]);
+  const canSubmit = useMemo(
+    () => submitState !== "submitting" && Boolean(String(userInput).trim()),
+    [submitState, userInput]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -45,9 +69,18 @@ export default function IngestionOutputPage() {
         if (cancelled) return;
 
         if (res.kind === "json") {
-          setMode("json");
-          setJsonPayload(res.data);
-          setErrorText("");
+          const extractedError = extractErrorFromJson(res.data);
+          if (extractedError) {
+            // JSON with "error" key => treat as prompt/error mode
+            setMode("text");
+            setErrorText(extractedError);
+            setJsonPayload(null);
+          } else {
+            // JSON without "error" key => render as table
+            setMode("json");
+            setJsonPayload(res.data);
+            setErrorText("");
+          }
         } else {
           const t = String(res.text ?? "").trim();
           setMode(t ? "text" : "empty");
@@ -82,9 +115,16 @@ export default function IngestionOutputPage() {
       const res = await submitIngestionWorkspaceInput(userInput);
 
       if (res.kind === "json") {
-        setMode("json");
-        setJsonPayload(res.data);
-        setErrorText("");
+        const extractedError = extractErrorFromJson(res.data);
+        if (extractedError) {
+          setMode("text");
+          setErrorText(extractedError);
+          setJsonPayload(null);
+        } else {
+          setMode("json");
+          setJsonPayload(res.data);
+          setErrorText("");
+        }
       } else {
         const t = String(res.text ?? "").trim();
         setMode(t ? "text" : "empty");
@@ -108,14 +148,14 @@ export default function IngestionOutputPage() {
             <h1 className="auth-title ingestion-output__title">Ingestion layer</h1>
           </header>
 
-          {/* JSON response => render tables */}
+          {/* JSON response (without error key) => render tables */}
           {mode === "json" ? (
             <div className="ingestion-output__tableWrap" aria-label="Ingestion payload table">
               <JsonTable value={jsonPayload} minWidth={840} />
             </div>
           ) : null}
 
-          {/* Plain text message => show message + textbox + submit */}
+          {/* Error/prompt message => show message + textbox + submit */}
           {mode === "text" ? (
             <div
               role="region"
