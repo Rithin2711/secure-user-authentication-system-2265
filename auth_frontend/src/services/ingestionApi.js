@@ -17,7 +17,7 @@ function normalizeEndpoint(url) {
   return u.endsWith("/") ? u : `${u}/`;
 }
 
-const DEFAULT_ENDPOINT = "https://vscode-internal-35939-beta.beta01.cloud.kavia.ai:3001/";
+const DEFAULT_ENDPOINT = "https://vscode-internal-38518-beta.beta01.cloud.kavia.ai:3001/";
 
 const ENDPOINT = normalizeEndpoint(process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_BASE || DEFAULT_ENDPOINT);
 
