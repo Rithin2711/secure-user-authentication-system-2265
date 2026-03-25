@@ -105,7 +105,7 @@ export default function IngestionOutputPage() {
       <section className="auth-card auth-card--flat" role="region" aria-label="Ingestion payload">
         <div className="auth-wide-content ingestion-output">
           <header className="ingestion-output__header">
-            <h1 className="auth-title ingestion-output__title">Workflow · Ingestion</h1>
+            <h1 className="auth-title ingestion-output__title">Ingestion layer</h1>
           </header>
 
           {/* JSON response => render tables */}
@@ -115,7 +115,7 @@ export default function IngestionOutputPage() {
             </div>
           ) : null}
 
-          {/* Plain text error => show message + textbox + submit */}
+          {/* Plain text message => show message + textbox + submit */}
           {mode === "text" ? (
             <div
               role="region"
@@ -128,11 +128,9 @@ export default function IngestionOutputPage() {
                 padding: 14,
               }}
             >
-              <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>Ingestion layer</div>
-
               <pre
                 style={{
-                  marginTop: 10,
+                  marginTop: 0,
                   marginBottom: 0,
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
@@ -147,9 +145,6 @@ export default function IngestionOutputPage() {
 
               <form onSubmit={onSubmit} style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <label style={{ flex: "1 1 320px", minWidth: 260 }}>
-                  <span style={{ display: "block", fontSize: 12, color: "rgba(255,255,255,0.72)", marginBottom: 6 }}>
-                    Your input
-                  </span>
                   <input
                     type="text"
                     value={userInput}

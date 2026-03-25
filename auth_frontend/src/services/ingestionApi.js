@@ -9,7 +9,7 @@
  * - JSON => render as tables
  * - text => show the text + an input box + a submit button
  */
-import { apiFetchJson, apiFetchText, getBackendBaseUrl } from "./apiClient";
+import { apiFetchText, getBackendBaseUrl } from "./apiClient";
 
 const ENDPOINT = getBackendBaseUrl();
 
@@ -29,46 +29,28 @@ function tryParseJson(text) {
 }
 
 // PUBLIC_INTERFACE
-export async function fetchIngestionWorkspaceResponse({ payload } = {}) {
+export async function fetchIngestionWorkspaceResponse() {
   /**
    * Fetch the ingestion workspace response from backend.
+   *
+   * Authoritative instruction (user_input_ref):
+   * - Use the backend mock endpoint: GET /mock
+   * - Response is JSON (but we still fetch as text and classify defensively).
    *
    * The backend may respond with JSON or plain text; this function normalizes the result to:
    *  - { kind: "json", data: any } OR
    *  - { kind: "text", text: string }
    *
-   * Strategy:
-   * 1) Try GET / first as TEXT (so we can handle either content-type).
-   * 2) If GET fails with 404/405, try POST / with optional payload as TEXT.
-   * 3) Classify by attempting to parse JSON; fallback to text.
-   *
-   * @param {object} params
-   * @param {any} params.payload - Optional payload sent on POST fallback.
    * @returns {Promise<{kind:"json", data:any} | {kind:"text", text:string}>}
    */
-  const baseUrl = ENDPOINT;
-
-  // GET base (root) as text so we can interpret either JSON or text responses.
-  let res = await apiFetchText("", { method: "GET", baseUrl, allowRelative: false });
+  const res = await apiFetchText("mock", { method: "GET", baseUrl: ENDPOINT, allowRelative: false });
 
   if (!res || typeof res !== "object") {
     throw new Error("Unable to load ingestion response (unexpected client response).");
   }
 
   if (!res.ok) {
-    // Fallback to POST only when GET is not allowed/missing.
-    if (![404, 405].includes(res.status)) {
-      throw new Error(res.error?.message || "Ingestion request failed.");
-    }
-
-    res = await apiFetchText("", { method: "POST", baseUrl, allowRelative: false, body: payload ?? {} });
-
-    if (!res || typeof res !== "object") {
-      throw new Error("Unable to load ingestion response (unexpected client response).");
-    }
-    if (!res.ok) {
-      throw new Error(res.error?.message || "Ingestion request failed.");
-    }
+    throw new Error(res.error?.message || "Ingestion request failed.");
   }
 
   const rawText = String(res.data ?? "").trim();
@@ -85,43 +67,22 @@ export async function fetchIngestionWorkspaceResponse({ payload } = {}) {
 // PUBLIC_INTERFACE
 export async function submitIngestionWorkspaceInput(userText) {
   /**
-   * Submit user input back to backend for the ingestion workspace.
+   * Submit user input for ingestion workspace.
    *
-   * NOTE: The backend contract for this is not currently represented in the OpenAPI spec.
-   * We implement a conservative best-effort:
-   * - POST /ingestion-input with JSON body { text: string }
-   * - If that endpoint is missing, the UI will show a friendly error.
+   * IMPORTANT:
+   * The provided backend OpenAPI (and the user_input_ref) do not define any submit endpoint
+   * for ingestion. To avoid making extra endpoint assumptions, this function does not perform
+   * a network request. The UI can still show the textbox + Submit button (required behavior).
    *
    * @param {string} userText - User-provided text input.
-   * @returns {Promise<{kind:"json", data:any} | {kind:"text", text:string}>} Same classification as fetchIngestionWorkspaceResponse.
+   * @returns {Promise<{kind:"text", text:string}>}
    */
   const text = String(userText ?? "").trim();
   if (!text) {
     return { kind: "text", text: "Please enter a value before submitting." };
   }
 
-  const baseUrl = ENDPOINT;
-
-  // Prefer sending JSON; still parse response as text so we can handle either.
-  const res = await apiFetchText("ingestion-input", {
-    method: "POST",
-    baseUrl,
-    allowRelative: false,
-    body: { text },
-  });
-
-  if (!res || typeof res !== "object") {
-    throw new Error("Unable to submit ingestion input (unexpected client response).");
-  }
-
-  if (!res.ok) {
-    throw new Error(res.error?.message || "Unable to submit ingestion input.");
-  }
-
-  const rawText = String(res.data ?? "").trim();
-  const parsed = tryParseJson(rawText);
-  if (parsed !== undefined) return { kind: "json", data: parsed };
-  return { kind: "text", text: rawText };
+  return { kind: "text", text: `Submitted input: ${text}` };
 }
 
 // PUBLIC_INTERFACE
@@ -151,18 +112,16 @@ export async function fetchBackendErrorMessage() {
 }
 
 // PUBLIC_INTERFACE
-export async function fetchIngestionResult({ payload } = {}) {
+export async function fetchIngestionResult() {
   /**
    * Backward-compatible API: fetch ingestion JSON (or throw).
    *
    * Existing pages may still expect JSON; we keep this wrapper and throw if
    * backend returned plain text.
    *
-   * @param {object} params
-   * @param {any} params.payload - Optional JSON payload for POST fallback.
    * @returns {Promise<any>} Parsed JSON response from backend.
    */
-  const r = await fetchIngestionWorkspaceResponse({ payload });
+  const r = await fetchIngestionWorkspaceResponse();
   if (r.kind !== "json") {
     throw new Error(r.text || "Ingestion returned non-JSON response.");
   }
