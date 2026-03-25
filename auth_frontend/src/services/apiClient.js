@@ -58,6 +58,83 @@ export function getBackendBaseUrl() {
   return base ? normalizeEndpoint(base) : "";
 }
 
+/**
+ * Fetch plain text from an API endpoint with a consistent return shape.
+ *
+ * Rationale:
+ * - Some backend endpoints intentionally return plain text (e.g., /error-message).
+ * - We still want the same safety guarantee as apiFetchJson(): never return undefined.
+ *
+ * @param {string} path - API path like "error-message"
+ * @param {object=} options
+ * @param {string=} options.method
+ * @param {object=} options.headers
+ * @param {any=} options.body
+ * @param {string=} options.baseUrl
+ * @param {boolean=} options.allowRelative
+ *
+ * @returns {Promise<{ok: boolean, status: number, data: string|null, error: {message: string, details?: any}|null, url: string}>}
+ */
+// PUBLIC_INTERFACE
+export async function apiFetchText(path, { method = "GET", headers, body, baseUrl, allowRelative = false } = {}) {
+  const normalizedBase = baseUrl ? normalizeEndpoint(baseUrl) : "";
+  const normalizedPath = String(path || "");
+
+  if (!normalizedBase && !allowRelative) {
+    return {
+      ok: false,
+      status: 0,
+      data: null,
+      error: {
+        message:
+          "Backend URL is not configured. Set REACT_APP_BACKEND_URL (or REACT_APP_API_BASE) to your backend base URL (e.g. https://your-backend.example.com/).",
+      },
+      url: normalizedPath,
+    };
+  }
+
+  const url = normalizedBase ? joinUrl(normalizedBase, normalizedPath) : normalizedPath;
+
+  const finalHeaders = { ...(headers || {}) };
+  let finalBody = body;
+
+  if (body !== undefined && body !== null && typeof body !== "string") {
+    finalBody = JSON.stringify(body);
+    if (!finalHeaders["Content-Type"]) finalHeaders["Content-Type"] = "application/json";
+  }
+
+  try {
+    const resp = await fetch(url, { method, headers: finalHeaders, body: finalBody });
+    const text = await tryReadText(resp);
+
+    if (resp.ok) {
+      return { ok: true, status: resp.status, data: text ?? "", error: null, url };
+    }
+
+    // If backend returns JSON error (FastAPI 404 etc), surface the best message.
+    const json = await tryReadJson(resp.clone());
+    const message = `${toErrorMessage({ json, text, status: resp.status })} (${url})`;
+
+    return {
+      ok: false,
+      status: resp.status,
+      data: text ?? "",
+      error: { message, details: json || text || null },
+      url,
+    };
+  } catch (e) {
+    const details =
+      e && typeof e === "object" && "message" in e && typeof e.message === "string" ? e.message : String(e || "");
+    return {
+      ok: false,
+      status: 0,
+      data: null,
+      error: { message: `Unable to reach server (${url}). Please try again.`, details: details || null },
+      url,
+    };
+  }
+}
+
 // PUBLIC_INTERFACE
 export async function apiFetchJson(path, { method = "GET", headers, body, baseUrl, allowRelative = false } = {}) {
   /**

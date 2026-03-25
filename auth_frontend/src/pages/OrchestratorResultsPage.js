@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { fetchMockRequiredIngestionFields } from "../services/ingestionApi";
+import { fetchBackendErrorMessage, fetchMockRequiredIngestionFields } from "../services/ingestionApi";
 import JsonTable from "../components/JsonTable";
 
 /**
@@ -28,6 +28,10 @@ export default function OrchestratorResultsPage() {
   const [mockData, setMockData] = useState(null);
   const [mockError, setMockError] = useState("");
 
+  // Ingestion TAB backend error string (from /error-message)
+  const [backendErrorStatus, setBackendErrorStatus] = useState("idle"); // idle | loading | success | error
+  const [backendErrorText, setBackendErrorText] = useState("");
+
   // Top dashboard user menu state
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuWrapRef = useRef(null);
@@ -42,11 +46,33 @@ export default function OrchestratorResultsPage() {
     return "User";
   }, []);
 
+  const loadBackendErrorMessage = async () => {
+    // PUBLIC_INTERFACE
+    /**
+     * Fetches /error-message for the Ingestion tab and stores the returned plain-text message.
+     * This is displayed in the ingestion workspace output area.
+     */
+    setBackendErrorStatus("loading");
+    try {
+      const text = await fetchBackendErrorMessage();
+      setBackendErrorText(text);
+      setBackendErrorStatus("success");
+    } catch (e) {
+      // Keep UI stable even if endpoint is missing; show a friendly message.
+      setBackendErrorText(e instanceof Error ? e.message : "Failed to load /error-message response.");
+      setBackendErrorStatus("error");
+    }
+  };
+
   const loadMock = async () => {
     // PUBLIC_INTERFACE
     /** Fetches /mock payload for the Ingestion tab and updates local status. */
     setMockStatus("loading");
     setMockError("");
+
+    // Also refresh the backend error message whenever ingestion is refreshed.
+    loadBackendErrorMessage();
+
     try {
       const data = await fetchMockRequiredIngestionFields();
       setMockData(data);
@@ -58,7 +84,7 @@ export default function OrchestratorResultsPage() {
     }
   };
 
-  // Ensure /mock is fetched when the ingestion tab is opened (initial page load, and whenever user returns to ingestion).
+  // Ensure ingestion data is fetched when the ingestion tab is opened (initial page load, and whenever user returns to ingestion).
   useEffect(() => {
     if (selectedAgent !== "ingestion") return;
     if (mockStatus !== "idle") return;
@@ -291,6 +317,57 @@ export default function OrchestratorResultsPage() {
         <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>Ingestion · /mock response</div>
         <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.66)" }}>
           Source: <code style={{ color: "rgba(255,255,255,0.82)" }}>/mock</code>
+        </div>
+
+        {/* Backend error-message workspace (plain text) */}
+        <div
+          role="region"
+          aria-label="Backend error message"
+          style={{
+            marginTop: 12,
+            padding: "12px 12px",
+            borderRadius: 14,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(0,0,0,0.10)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.90)" }}>
+              Backend · <code style={{ color: "rgba(255,255,255,0.90)" }}>/error-message</code>
+            </div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>
+              Status:{" "}
+              <span style={{ color: "rgba(255,255,255,0.86)", fontWeight: 850 }}>
+                {backendErrorStatus === "loading"
+                  ? "Loading…"
+                  : backendErrorStatus === "success"
+                    ? "Loaded"
+                    : backendErrorStatus === "error"
+                      ? "Error"
+                      : "Idle"}
+              </span>
+            </div>
+          </div>
+
+          <pre
+            style={{
+              marginTop: 10,
+              marginBottom: 0,
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: "rgba(255,255,255,0.86)",
+              fontFamily:
+                'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+            }}
+          >
+            {backendErrorText && backendErrorText.trim()
+              ? backendErrorText
+              : backendErrorStatus === "loading"
+                ? "Fetching /error-message…"
+                : "No message returned."}
+          </pre>
         </div>
 
         {mockStatus === "loading" ? (

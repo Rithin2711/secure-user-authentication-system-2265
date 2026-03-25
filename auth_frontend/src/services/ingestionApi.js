@@ -9,7 +9,7 @@
  * - return parsed JSON, or
  * - throw an Error with a friendly message.
  */
-import { apiFetchJson, getBackendBaseUrl } from "./apiClient";
+import { apiFetchJson, apiFetchText, getBackendBaseUrl } from "./apiClient";
 
 const ENDPOINT = getBackendBaseUrl();
 
@@ -80,4 +80,30 @@ export async function fetchIngestionResult({ payload } = {}) {
   res = await apiFetchJson("", { method: "POST", baseUrl, allowRelative: false, body: payload ?? {} });
   if (!res.ok) throw new Error(res.error?.message || "Ingestion request failed.");
   return res.data;
+}
+
+// PUBLIC_INTERFACE
+export async function fetchBackendErrorMessage() {
+  /**
+   * Fetches the backend error message (plain text) for display in the Workflow → Ingestion workspace.
+   *
+   * Endpoint:
+   * - GET {REACT_APP_BACKEND_URL || REACT_APP_API_BASE}/error-message
+   *
+   * Expected response:
+   * - text/plain (an error string). We display it as-is (trimmed).
+   *
+   * @returns {Promise<string>} Error message text (may be empty string).
+   */
+  const res = await apiFetchText("error-message", { method: "GET", baseUrl: ENDPOINT, allowRelative: false });
+
+  if (!res || typeof res !== "object") {
+    throw new Error("Unable to load /error-message (unexpected client response).");
+  }
+
+  if (!res.ok) {
+    throw new Error(res.error?.message || "Unable to load /error-message.");
+  }
+
+  return String(res.data || "").trim();
 }
