@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { fetchMockRequiredIngestionFields } from "../services/ingestionApi";
+import JsonTable from "../components/JsonTable";
 
 /**
  * Work Flow Results Page (UI-only + small backend call on ingestion TAB click).
@@ -9,40 +10,13 @@ import { fetchMockRequiredIngestionFields } from "../services/ingestionApi";
  * - Render 4 agent selector blocks: Ingestion, Validation, Inventory, Pricing.
  * - Allow selecting an agent; the selected agent is visually highlighted.
  * - Render the selected agent output below:
- *   - Ingestion TAB: calls backend GET /mock (on open + on click) and renders:
- *        - payload.message
- *        - payload.meta (key/value table)
- *        - payload.items as a multi-row table
+ *   - Ingestion TAB: calls backend GET /mock (on open + on click) and renders the returned JSON as tables
+ *     (including nested objects and arrays) using existing table UI patterns.
  *   - Others: placeholders for now.
  *
  * Routing:
  * - Accessible via hash route: #/orchestrator
  */
-
-function toKeyValueRows(payload) {
-  if (payload === null || payload === undefined) return [];
-  if (typeof payload !== "object") return [["value", String(payload)]];
-
-  // Prefer stable ordering for predictable UI.
-  return Object.entries(payload)
-    .map(([k, v]) => [String(k), v])
-    .sort((a, b) => a[0].localeCompare(b[0]));
-}
-
-function previewValue(value) {
-  if (value === undefined || value === null) return "—";
-  if (typeof value === "string") return value.trim() ? value : "—";
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
-}
-
-function getMockPayloadShape(mockData) {
-  const payload = mockData?.payload;
-  const message = typeof payload?.message === "string" ? payload.message : "";
-  const meta = payload?.meta && typeof payload.meta === "object" ? payload.meta : null;
-  const items = Array.isArray(payload?.items) ? payload.items : [];
-  return { payload, message, meta, items };
-}
 
 // PUBLIC_INTERFACE
 export default function OrchestratorResultsPage() {
@@ -119,7 +93,7 @@ export default function OrchestratorResultsPage() {
       {
         key: "ingestion",
         title: "Ingestion",
-        subtitle: "Render /mock payload.message, payload.meta, and payload.items",
+        subtitle: "Fetch /mock and render JSON output in table format (nested objects/arrays supported)",
         status: "success",
       },
       {
@@ -294,29 +268,9 @@ export default function OrchestratorResultsPage() {
     );
   };
 
-  // Memoize columns derived from the current /mock items array.
-  // Hook must live in a React component (this one), not in a nested render helper.
-  const ingestionItemColumns = useMemo(() => {
-    const { items } = getMockPayloadShape(mockData);
-    const first = items?.[0];
-
-    const preferred = ["id", "name", "status"];
-
-    if (!first || typeof first !== "object") return preferred;
-
-    const keys = Object.keys(first).map(String);
-
-    // Keep preferred order when possible; append the rest sorted for stable UI.
-    const rest = keys.filter((k) => !preferred.includes(k)).sort((a, b) => a.localeCompare(b));
-    const merged = [...preferred.filter((k) => keys.includes(k)), ...rest];
-
-    return merged.length ? merged : preferred;
-  }, [mockData]);
-
   const renderIngestionTabOutput = () => {
-    const { message, meta, items } = getMockPayloadShape(mockData);
-    const metaRows = toKeyValueRows(meta);
-    const itemColumns = ingestionItemColumns;
+    // Tolerate either {payload:{...}} or the payload as root.
+    const payloadRoot = mockData?.payload ?? mockData;
 
     return (
       <div
@@ -363,18 +317,14 @@ export default function OrchestratorResultsPage() {
             }}
           >
             <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>Unable to load /mock</div>
-            <div style={{ marginTop: 6, color: "rgba(255,255,255,0.86)", fontSize: 13, lineHeight: 1.45 }}>
-              {mockError || "Request failed."}
-            </div>
+            <div style={{ marginTop: 6, color: "rgba(255,255,255,0.86)", fontSize: 13, lineHeight: 1.45 }}>{mockError || "Request failed."}</div>
           </div>
         ) : null}
 
         {mockStatus === "success" ? (
           <div style={{ marginTop: 12 }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>
-                Items: <span style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950 }}>{items.length}</span>
-              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Rendering nested JSON as tables (objects + arrays).</div>
               <button
                 type="button"
                 onClick={loadMock}
@@ -395,182 +345,8 @@ export default function OrchestratorResultsPage() {
               </button>
             </div>
 
-            {/* payload.message */}
             <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Message</div>
-              <div style={{ marginTop: 6, fontSize: 13, fontWeight: 900, color: "rgba(255,255,255,0.90)", lineHeight: 1.45 }}>
-                {message ? message : "—"}
-              </div>
-            </div>
-
-            {/* payload.meta */}
-            <div style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Meta</div>
-              <div
-                style={{
-                  marginTop: 8,
-                  borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "rgba(0,0,0,0.14)",
-                  overflow: "hidden",
-                }}
-              >
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 520 }}>
-                    <thead>
-                      <tr>
-                        <th
-                          align="left"
-                          style={{
-                            position: "sticky",
-                            top: 0,
-                            zIndex: 1,
-                            padding: "12px 12px",
-                            fontSize: 12,
-                            fontWeight: 950,
-                            letterSpacing: "-0.01em",
-                            color: "rgba(255,255,255,0.86)",
-                            background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
-                            borderBottom: "1px solid rgba(255,255,255,0.10)",
-                          }}
-                        >
-                          Key
-                        </th>
-                        <th
-                          align="left"
-                          style={{
-                            position: "sticky",
-                            top: 0,
-                            zIndex: 1,
-                            padding: "12px 12px",
-                            fontSize: 12,
-                            fontWeight: 950,
-                            letterSpacing: "-0.01em",
-                            color: "rgba(255,255,255,0.86)",
-                            background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
-                            borderBottom: "1px solid rgba(255,255,255,0.10)",
-                          }}
-                        >
-                          Value
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {metaRows.length ? (
-                        metaRows.map(([k, v], idx) => {
-                          const rowBg = idx % 2 === 0 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.01)";
-                          return (
-                            <tr key={k} style={{ background: rowBg }}>
-                              <td
-                                style={{
-                                  padding: "12px 12px",
-                                  borderBottom: "1px solid rgba(255,255,255,0.06)",
-                                  verticalAlign: "top",
-                                }}
-                              >
-                                <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.86)" }}>{k}</div>
-                              </td>
-                              <td
-                                style={{
-                                  padding: "12px 12px",
-                                  borderBottom: "1px solid rgba(255,255,255,0.06)",
-                                  verticalAlign: "top",
-                                }}
-                              >
-                                <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.90)", wordBreak: "break-word" }}>
-                                  {previewValue(v)}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={2} style={{ padding: "12px 12px", color: "rgba(255,255,255,0.72)", fontSize: 13 }}>
-                            —
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            {/* payload.items */}
-            <div style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Items</div>
-              <div
-                style={{
-                  marginTop: 8,
-                  borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "rgba(0,0,0,0.14)",
-                  overflow: "hidden",
-                }}
-              >
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 560 }}>
-                    <thead>
-                      <tr>
-                        {itemColumns.map((col) => (
-                          <th
-                            key={col}
-                            align="left"
-                            style={{
-                              position: "sticky",
-                              top: 0,
-                              zIndex: 1,
-                              padding: "12px 12px",
-                              fontSize: 12,
-                              fontWeight: 950,
-                              letterSpacing: "-0.01em",
-                              color: "rgba(255,255,255,0.86)",
-                              background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
-                              borderBottom: "1px solid rgba(255,255,255,0.10)",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {col}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.length ? (
-                        items.map((it, idx) => {
-                          const rowBg = idx % 2 === 0 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.01)";
-                          const rowKey = it && typeof it === "object" && (it.id || it.name) ? `${it.id ?? ""}-${it.name ?? ""}-${idx}` : String(idx);
-                          return (
-                            <tr key={rowKey} style={{ background: rowBg }}>
-                              {itemColumns.map((col) => (
-                                <td
-                                  key={col}
-                                  style={{
-                                    padding: "12px 12px",
-                                    borderBottom: "1px solid rgba(255,255,255,0.06)",
-                                    verticalAlign: "top",
-                                  }}
-                                >
-                                  <div style={{ fontSize: 12, fontWeight: 850, color: "rgba(255,255,255,0.90)", wordBreak: "break-word" }}>
-                                    {previewValue(it?.[col])}
-                                  </div>
-                                </td>
-                              ))}
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={itemColumns.length} style={{ padding: "12px 12px", color: "rgba(255,255,255,0.72)", fontSize: 13 }}>
-                            No items returned.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <JsonTable value={payloadRoot} label="payload" defaultExpanded={true} minWidth={720} />
             </div>
           </div>
         ) : null}
