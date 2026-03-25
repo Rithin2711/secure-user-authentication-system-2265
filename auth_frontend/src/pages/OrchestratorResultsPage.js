@@ -9,21 +9,65 @@ import { fetchBackendErrorMessage } from "../services/ingestionApi";
  * - Render 4 agent selector blocks: Ingestion, Validation, Inventory, Pricing.
  * - Allow selecting an agent; the selected agent is visually highlighted.
  * - Render the selected agent output below:
- *   - Ingestion TAB: displays backend GET /error-message (plain text).
+ *   - Ingestion TAB: displays backend GET /error-message (plain text OR JSON).
+ *     - If JSON contains an `error` key, show error text + textbox+Submit below.
  *   - Others: placeholders for now.
  *
  * Routing:
  * - Accessible via hash route: #/orchestrator
  */
 
+function isPlainObject(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function tryParseJson(text) {
+  if (text === null || text === undefined) return undefined;
+  const t = String(text).trim();
+  if (!t) return undefined;
+  try {
+    return JSON.parse(t);
+  } catch {
+    return undefined;
+  }
+}
+
+function extractErrorFromJson(value) {
+  // Backend contract for this task: JSON may contain { "error": <string> }.
+  // We also support nested payloads (e.g. { payload: { error: ... } }).
+  if (!isPlainObject(value)) return "";
+  const candidates = [];
+
+  if (Object.prototype.hasOwnProperty.call(value, "error")) candidates.push(value.error);
+  if (isPlainObject(value.payload) && Object.prototype.hasOwnProperty.call(value.payload, "error")) {
+    candidates.push(value.payload.error);
+  }
+
+  for (const e of candidates) {
+    if (typeof e === "string" && e.trim()) return e.trim();
+    if (e === null || e === undefined) return "An error occurred.";
+    try {
+      return JSON.stringify(e);
+    } catch {
+      return String(e);
+    }
+  }
+  return "";
+}
+
 // PUBLIC_INTERFACE
 export default function OrchestratorResultsPage() {
   /** Orchestrator results shell with agent selectors + output area. */
   const [selectedAgent, setSelectedAgent] = useState("ingestion"); // ingestion | validation | inventory | pricing
 
-  // Ingestion TAB backend error string (from /error-message)
+  // Ingestion TAB backend response (from /error-message) - can be text OR JSON string.
   const [backendErrorStatus, setBackendErrorStatus] = useState("idle"); // idle | loading | success | error
   const [backendErrorText, setBackendErrorText] = useState("");
+
+  // If backend response is JSON with `error` key, we render a textbox+submit below.
+  const [ingestionHasErrorKey, setIngestionHasErrorKey] = useState(false);
+  const [userInput, setUserInput] = useState("");
+  const [submitState, setSubmitState] = useState("idle"); // idle | submitting
 
   // Top dashboard user menu state
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -39,21 +83,54 @@ export default function OrchestratorResultsPage() {
     return "User";
   }, []);
 
+  const canSubmit = useMemo(
+    () => submitState !== "submitting" && Boolean(String(userInput).trim()),
+    [submitState, userInput]
+  );
+
   const loadBackendErrorMessage = async () => {
     // PUBLIC_INTERFACE
     /**
-     * Fetches /error-message for the Ingestion tab and stores the returned plain-text message.
-     * This is displayed in the ingestion workspace output area.
+     * Fetches /error-message for the Ingestion tab.
+     *
+     * Behavior:
+     * - If response is plain text: show it (legacy behavior).
+     * - If response is JSON-string and contains an `error` key: show error + textbox+Submit.
      */
     setBackendErrorStatus("loading");
     try {
       const text = await fetchBackendErrorMessage();
-      setBackendErrorText(text);
+
+      // Determine if this text is actually JSON and whether it contains an error key.
+      const parsed = tryParseJson(text);
+      const extractedError = parsed !== undefined ? extractErrorFromJson(parsed) : "";
+      const hasErrorKey = Boolean(extractedError);
+
+      setIngestionHasErrorKey(hasErrorKey);
+      setBackendErrorText(hasErrorKey ? extractedError : text);
+
       setBackendErrorStatus("success");
     } catch (e) {
       // Keep UI stable even if endpoint is missing; show a friendly message.
       setBackendErrorText(e instanceof Error ? e.message : "Failed to load /error-message response.");
+      setIngestionHasErrorKey(false);
       setBackendErrorStatus("error");
+    }
+  };
+
+  const onSubmit = async (ev) => {
+    // PUBLIC_INTERFACE
+    /** UI-only submit (backend does not currently define an ingestion submit endpoint). */
+    ev.preventDefault();
+    if (!canSubmit) return;
+
+    setSubmitState("submitting");
+    try {
+      const trimmed = String(userInput || "").trim();
+      setBackendErrorText((prev) => (prev ? `${prev}\n\nSubmitted input: ${trimmed}` : `Submitted input: ${trimmed}`));
+      setUserInput("");
+    } finally {
+      setSubmitState("idle");
     }
   };
 
@@ -188,7 +265,7 @@ export default function OrchestratorResultsPage() {
       <button
         type="button"
         onClick={() => {
-          // No /mock calls. Only refresh /error-message when user clicks Ingestion (or re-clicks to refresh).
+          // Refresh /error-message when user clicks Ingestion (or re-clicks to refresh).
           if (agent.key === "ingestion") {
             loadBackendErrorMessage();
           }
@@ -305,6 +382,57 @@ export default function OrchestratorResultsPage() {
               ? ""
               : ""}
         </pre>
+
+        {/* Required behavior: when response JSON contains an `error` key, show textbox+Submit under error message */}
+        {ingestionHasErrorKey ? (
+          <form onSubmit={onSubmit} style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <label style={{ flex: "1 1 320px", minWidth: 260 }}>
+              <input
+                type="text"
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                placeholder="Type your response…"
+                aria-label="Ingestion user input"
+                style={{
+                  width: "100%",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.16)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "rgba(255,255,255,0.92)",
+                  padding: "10px 12px",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  outline: "none",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+                }}
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              aria-disabled={!canSubmit}
+              style={{
+                alignSelf: "end",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.16)",
+                background: canSubmit
+                  ? "linear-gradient(135deg, rgba(59,130,246,0.85), rgba(6,182,212,0.80))"
+                  : "rgba(255,255,255,0.08)",
+                color: "rgba(255,255,255,0.92)",
+                padding: "10px 14px",
+                cursor: canSubmit ? "pointer" : "not-allowed",
+                fontSize: 13,
+                fontWeight: 950,
+                letterSpacing: "-0.01em",
+                boxShadow: canSubmit ? "0 14px 40px rgba(59,130,246,0.20)" : "none",
+                minWidth: 110,
+              }}
+            >
+              {submitState === "submitting" ? "Submitting…" : "Submit"}
+            </button>
+          </form>
+        ) : null}
       </div>
     );
   };
