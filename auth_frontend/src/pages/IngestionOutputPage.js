@@ -1,51 +1,21 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { fetchMockRequiredIngestionFields } from "../services/ingestionApi";
+import JsonTable from "../components/JsonTable";
 
 /**
- * Orchestrator -> Ingestion layer page (backend-integrated).
+ * Workflow -> Ingestion layer page (backend-integrated).
  *
- * Task requirement:
- * - Call GET /mock from the backend base URL
- * - Render the returned JSON payload:
- *    - payload.message
- *    - payload.meta (as pretty JSON)
- *    - payload.items (as a table)
+ * Requirement for this subtask:
+ * - Call GET /mock from the backend
+ * - Render the returned JSON payload EXACTLY as returned (same keys/sections),
+ *   including nested objects/arrays, in table format.
  */
-
-// --- Render helpers ---
-
-function safeToPrettyJson(value) {
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
-
-function isPlainObject(value) {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
-
-function getDisplayValue(value) {
-  if (value === undefined || value === null) return "—";
-  if (typeof value === "string" && value.trim() === "") return "—";
-  if (typeof value === "object") return safeToPrettyJson(value);
-  return String(value);
-}
-
-function getColumnsFromItems(items) {
-  const columns = new Set();
-  for (const item of items) {
-    if (!isPlainObject(item)) continue;
-    for (const k of Object.keys(item)) columns.add(k);
-  }
-  return Array.from(columns);
-}
 
 // PUBLIC_INTERFACE
 export default function IngestionOutputPage() {
   /**
-   * Ingestion output page that displays the backend /mock response.
+   * Workflow ingestion output page that displays the backend /mock response
+   * without reshaping it (renders exact JSON structure).
    */
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [payload, setPayload] = useState(null);
@@ -61,7 +31,8 @@ export default function IngestionOutputPage() {
       try {
         const data = await fetchMockRequiredIngestionFields();
         if (cancelled) return;
-        setPayload(data?.payload ?? data); // tolerate either {payload:{...}} or payload as root
+        // IMPORTANT: do not reshape. Render exactly what backend returns.
+        setPayload(data);
         setStatus("success");
       } catch (e) {
         if (cancelled) return;
@@ -77,20 +48,20 @@ export default function IngestionOutputPage() {
     };
   }, []);
 
-  const message = payload?.message;
-  const meta = payload?.meta;
-  const items = Array.isArray(payload?.items) ? payload.items : [];
-
-  const columns = getColumnsFromItems(items);
+  const topLevelEntries = useMemo(() => {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return [];
+    // Preserve original key order as provided by backend (do NOT sort).
+    return Object.entries(payload);
+  }, [payload]);
 
   return (
-    <main className="auth-page auth-page--wide" aria-label="Orchestrator ingestion mock output page">
+    <main className="auth-page auth-page--wide" aria-label="Workflow ingestion mock output page">
       <section className="auth-card auth-card--flat" role="region" aria-label="Mock ingestion payload">
         <div className="auth-wide-content" style={{ paddingTop: 10 }}>
           <h1 className="auth-title" style={{ marginTop: 14 }}>
-            Orchestrator · Ingestion (/mock)
+            Workflow · Ingestion (/mock)
           </h1>
-          <p className="auth-subtitle">Displaying the backend mock ingestion payload.</p>
+          <p className="auth-subtitle">Displaying the backend /mock payload in table format (exact structure).</p>
 
           {/* Loading */}
           {status === "loading" ? (
@@ -133,145 +104,44 @@ export default function IngestionOutputPage() {
           {/* Success */}
           {status === "success" ? (
             <div style={{ marginTop: 14 }}>
-              {/* message */}
-              <div
-                style={{
-                  padding: "12px 12px",
-                  borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "rgba(0,0,0,0.14)",
-                }}
-              >
-                <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.72)" }}>payload.message</div>
-                <div style={{ marginTop: 6, fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>
-                  {message ? String(message) : "—"}
-                </div>
-              </div>
-
-              {/* meta */}
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: "12px 12px",
-                  borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "rgba(0,0,0,0.14)",
-                }}
-              >
-                <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.72)" }}>payload.meta</div>
-                <pre
-                  style={{
-                    marginTop: 10,
-                    marginBottom: 0,
-                    padding: 12,
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    background: "rgba(0,0,0,0.18)",
-                    overflowX: "auto",
-                    fontSize: 12,
-                    lineHeight: 1.45,
-                    color: "rgba(255,255,255,0.86)",
-                  }}
-                >
-                  {safeToPrettyJson(meta ?? {})}
-                </pre>
-              </div>
-
-              {/* items table */}
-              <div style={{ marginTop: 12 }}>
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                  <div style={{ fontWeight: 900, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>
-                    payload.items
-                  </div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>{items.length} rows</div>
-                </div>
-
+              {payload === null || payload === undefined ? (
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.80)" }}>No payload returned.</div>
+              ) : typeof payload !== "object" || Array.isArray(payload) ? (
                 <div
                   style={{
-                    marginTop: 10,
+                    padding: "12px 12px",
                     borderRadius: 14,
                     border: "1px solid rgba(255,255,255,0.14)",
                     background: "rgba(0,0,0,0.14)",
-                    overflow: "hidden",
                   }}
                 >
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 720 }}>
-                      <thead>
-                        <tr>
-                          {columns.map((col) => (
-                            <th
-                              key={col}
-                              align="left"
-                              style={{
-                                position: "sticky",
-                                top: 0,
-                                zIndex: 1,
-                                padding: "12px 12px",
-                                fontSize: 12,
-                                fontWeight: 950,
-                                letterSpacing: "-0.01em",
-                                color: "rgba(255,255,255,0.86)",
-                                background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
-                                borderBottom: "1px solid rgba(255,255,255,0.10)",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {col}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {items.length === 0 ? (
-                          <tr>
-                            <td
-                              colSpan={Math.max(columns.length, 1)}
-                              style={{
-                                padding: "14px 12px",
-                                color: "rgba(255,255,255,0.74)",
-                                fontSize: 12,
-                                borderBottom: "1px solid rgba(255,255,255,0.06)",
-                              }}
-                            >
-                              No items returned.
-                            </td>
-                          </tr>
-                        ) : (
-                          items.map((item, idx) => {
-                            const rowBg = idx % 2 === 0 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.01)";
-                            return (
-                              <tr key={idx} style={{ background: rowBg }}>
-                                {columns.map((col) => (
-                                  <td
-                                    key={col}
-                                    style={{
-                                      padding: "12px 12px",
-                                      borderBottom: "1px solid rgba(255,255,255,0.06)",
-                                      verticalAlign: "top",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        fontSize: 12,
-                                        fontWeight: 850,
-                                        color: "rgba(255,255,255,0.90)",
-                                        wordBreak: "break-word",
-                                      }}
-                                    >
-                                      {isPlainObject(item) ? getDisplayValue(item[col]) : getDisplayValue(item)}
-                                    </div>
-                                  </td>
-                                ))}
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
+                  <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.72)" }}>payload</div>
+                  <div style={{ marginTop: 8 }}>
+                    <JsonTable value={payload} />
                   </div>
                 </div>
-              </div>
+              ) : (
+                // Render each top-level key as its own labeled table block, preserving key order.
+                <div>
+                  {topLevelEntries.map(([key, value]) => (
+                    <div
+                      key={String(key)}
+                      style={{
+                        marginTop: 12,
+                        padding: "12px 12px",
+                        borderRadius: 14,
+                        border: "1px solid rgba(255,255,255,0.14)",
+                        background: "rgba(0,0,0,0.14)",
+                      }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.72)" }}>{String(key)}</div>
+                      <div style={{ marginTop: 8 }}>
+                        <JsonTable value={value} minWidth={720} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : null}
 
