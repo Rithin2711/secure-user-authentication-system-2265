@@ -10,8 +10,8 @@ import JsonTable from "../components/JsonTable";
  * - Render 4 agent selector blocks: Ingestion, Validation, Inventory, Pricing.
  * - Allow selecting an agent; the selected agent is visually highlighted.
  * - Render the selected agent output below:
- *   - Ingestion TAB: calls backend GET /mock (on open + on click) and renders the returned JSON as tables
- *     (including nested objects and arrays) using existing table UI patterns.
+ *   - Ingestion TAB: renders the backend ingestion output in table format (nested objects/arrays supported).
+ *     (Implementation detail: the app may fetch a stable sample payload, but the UI must not mention `/mock`.)
  *   - Others: placeholders for now.
  *
  * Routing:
@@ -23,7 +23,7 @@ export default function OrchestratorResultsPage() {
   /** Orchestrator results shell with agent selectors + output area. */
   const [selectedAgent, setSelectedAgent] = useState("ingestion"); // ingestion | validation | inventory | pricing
 
-  // Ingestion TAB data (from /mock)
+  // Ingestion TAB data (backend response)
   const [mockStatus, setMockStatus] = useState("idle"); // idle | loading | success | error
   const [mockData, setMockData] = useState(null);
   const [mockError, setMockError] = useState("");
@@ -93,7 +93,7 @@ export default function OrchestratorResultsPage() {
       {
         key: "ingestion",
         title: "Ingestion",
-        subtitle: "Fetch /mock and render JSON output in table format (nested objects/arrays supported)",
+        subtitle: "Render ingestion output (see /error/date-time-missing for the ingestion error endpoint)",
         status: "success",
       },
       {
@@ -279,7 +279,7 @@ export default function OrchestratorResultsPage() {
     return (
       <div
         role="region"
-        aria-label="Ingestion mock response"
+        aria-label="Ingestion response"
         style={{
           marginTop: 14,
           borderRadius: 16,
@@ -288,9 +288,9 @@ export default function OrchestratorResultsPage() {
           padding: 14,
         }}
       >
-        <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>Ingestion · /mock response</div>
+        <div style={{ fontWeight: 950, letterSpacing: "-0.01em", color: "rgba(255,255,255,0.92)" }}>Ingestion · Backend response</div>
         <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.66)" }}>
-          Source: <code style={{ color: "rgba(255,255,255,0.82)" }}>/mock</code>
+          Reference endpoint: <code style={{ color: "rgba(255,255,255,0.82)" }}>/error/date-time-missing</code>
         </div>
 
         {mockStatus === "loading" ? (
@@ -305,7 +305,9 @@ export default function OrchestratorResultsPage() {
             }}
           >
             <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>Loading…</div>
-            <div style={{ marginTop: 6, color: "rgba(255,255,255,0.80)", fontSize: 13, lineHeight: 1.45 }}>Fetching /mock JSON.</div>
+            <div style={{ marginTop: 6, color: "rgba(255,255,255,0.80)", fontSize: 13, lineHeight: 1.45 }}>
+              Fetching ingestion output from the backend.
+            </div>
           </div>
         ) : null}
 
@@ -320,7 +322,7 @@ export default function OrchestratorResultsPage() {
               background: "rgba(239,68,68,0.12)",
             }}
           >
-            <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>Unable to load /mock</div>
+            <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>Unable to load ingestion output</div>
             <div style={{ marginTop: 6, color: "rgba(255,255,255,0.86)", fontSize: 13, lineHeight: 1.45 }}>{mockError || "Request failed."}</div>
           </div>
         ) : null}
@@ -328,7 +330,7 @@ export default function OrchestratorResultsPage() {
         {mockStatus === "success" ? (
           <div style={{ marginTop: 12 }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Rendering /mock JSON in table form (exact keys/sections).</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Rendering backend JSON in table form (exact keys/sections).</div>
               <button
                 type="button"
                 onClick={loadMock}
@@ -343,7 +345,7 @@ export default function OrchestratorResultsPage() {
                   fontWeight: 900,
                   letterSpacing: "-0.01em",
                 }}
-                aria-label="Refresh /mock response"
+                aria-label="Refresh ingestion response"
               >
                 Refresh
               </button>
@@ -381,7 +383,8 @@ export default function OrchestratorResultsPage() {
 
         {mockStatus === "idle" ? (
           <div style={{ marginTop: 10, fontSize: 13, color: "rgba(255,255,255,0.72)", lineHeight: 1.5 }}>
-            Opening the Ingestion tab will load <code style={{ color: "rgba(255,255,255,0.82)" }}>/mock</code>.
+            Opening the Ingestion tab will load the backend response. For the ingestion error message view, see{" "}
+            <code style={{ color: "rgba(255,255,255,0.82)" }}>/error/date-time-missing</code>.
           </div>
         ) : null}
       </div>

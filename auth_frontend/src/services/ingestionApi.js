@@ -2,11 +2,11 @@
  * Ingestion API client.
  *
  * IMPORTANT (behavior split):
- * - "Workflow ingestion output page" (IngestionOutputPage) uses fetchMockRequiredIngestionFields()
- *   to call GET /mock and render the returned JSON.
+ * - "Workflow ingestion output page" (IngestionOutputPage) uses fetchDateTimeMissingErrorMessage()
+ *   to call GET /error/date-time-missing and render the returned plain-text error message.
  *
  * This module must never return an undefined "response" object. It should either:
- * - return parsed JSON, or
+ * - return parsed JSON/text, or
  * - throw an Error with a friendly message.
  */
 import { apiFetchJson, getBackendBaseUrl } from "./apiClient";
