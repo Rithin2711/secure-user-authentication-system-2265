@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { fetchMockRequiredIngestionFields } from "../services/ingestionApi";
 import JsonTable from "../components/JsonTable";
 
@@ -48,124 +48,53 @@ export default function IngestionOutputPage() {
     };
   }, []);
 
-  const topLevelEntries = useMemo(() => {
-    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return [];
-    // Preserve original key order as provided by backend (do NOT sort).
-    return Object.entries(payload);
-  }, [payload]);
-
   return (
     <main className="auth-page auth-page--wide" aria-label="Workflow ingestion mock output page">
       <section className="auth-card auth-card--flat" role="region" aria-label="Mock ingestion payload">
-        <div className="auth-wide-content" style={{ paddingTop: 10 }}>
-          <h1 className="auth-title" style={{ marginTop: 14 }}>
-            Workflow · Ingestion (/mock)
-          </h1>
-          <p className="auth-subtitle">Displaying the backend /mock payload in table format (exact structure).</p>
+        <div className="auth-wide-content ingestion-output">
+          <header className="ingestion-output__header">
+            <h1 className="auth-title ingestion-output__title">Workflow · Ingestion (/mock)</h1>
+            <p className="auth-subtitle ingestion-output__subtitle">
+              Displaying the backend <code>/mock</code> payload in a nested table format (exact structure).
+            </p>
+          </header>
 
           {/* Loading */}
           {status === "loading" ? (
-            <div
-              role="status"
-              style={{
-                marginTop: 12,
-                padding: "12px 12px",
-                borderRadius: 14,
-                border: "1px solid rgba(59,130,246,0.28)",
-                background: "rgba(59,130,246,0.10)",
-              }}
-            >
-              <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>Loading /mock payload…</div>
-              <div style={{ marginTop: 6, color: "rgba(255,255,255,0.80)", fontSize: 13, lineHeight: 1.45 }}>
-                Calling backend <code style={{ fontWeight: 900 }}>/mock</code> and waiting for JSON.
+            <div className="ingestion-output__notice ingestion-output__notice--loading" role="status">
+              <div className="ingestion-output__noticeTitle">Loading /mock payload…</div>
+              <div className="ingestion-output__noticeBody">
+                Calling backend <code>/mock</code> and waiting for JSON.
               </div>
             </div>
           ) : null}
 
           {/* Error */}
           {status === "error" ? (
-            <div
-              role="alert"
-              style={{
-                marginTop: 12,
-                padding: "12px 12px",
-                borderRadius: 14,
-                border: "1px solid rgba(239,68,68,0.40)",
-                background: "rgba(239,68,68,0.12)",
-              }}
-            >
-              <div style={{ fontWeight: 950, letterSpacing: "-0.01em" }}>Unable to load /mock payload</div>
-              <div style={{ marginTop: 6, color: "rgba(255,255,255,0.86)", fontSize: 13, lineHeight: 1.45 }}>
-                {errorMessage || "Request failed."}
-              </div>
+            <div className="ingestion-output__notice ingestion-output__notice--error" role="alert">
+              <div className="ingestion-output__noticeTitle">Unable to load /mock payload</div>
+              <div className="ingestion-output__noticeBody">{errorMessage || "Request failed."}</div>
 
-              <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  style={{
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.16)",
-                    background: "rgba(255,255,255,0.06)",
-                    color: "rgba(255,255,255,0.92)",
-                    padding: "8px 10px",
-                    cursor: "pointer",
-                    fontSize: 12,
-                    fontWeight: 900,
-                    letterSpacing: "-0.01em",
-                  }}
-                >
+              <div className="ingestion-output__actions">
+                <button type="button" className="ingestion-output__ghostBtn" onClick={() => window.location.reload()}>
                   Retry
                 </button>
               </div>
             </div>
           ) : null}
 
-          {/* Success */}
+          {/* Success (ONLY the JSON-rendered table should appear under the heading) */}
           {status === "success" ? (
-            <div style={{ marginTop: 14 }}>
+            <div className="ingestion-output__tableWrap" aria-label="Mock payload table">
               {payload === null || payload === undefined ? (
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.80)" }}>No payload returned.</div>
-              ) : typeof payload !== "object" || Array.isArray(payload) ? (
-                <div
-                  style={{
-                    padding: "12px 12px",
-                    borderRadius: 14,
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    background: "rgba(0,0,0,0.14)",
-                  }}
-                >
-                  <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.72)" }}>payload</div>
-                  <div style={{ marginTop: 8 }}>
-                    <JsonTable value={payload} />
-                  </div>
-                </div>
+                <div className="ingestion-output__empty">No payload returned.</div>
               ) : (
-                // Render each top-level key as its own labeled table block, preserving key order.
-                <div>
-                  {topLevelEntries.map(([key, value]) => (
-                    <div
-                      key={String(key)}
-                      style={{
-                        marginTop: 12,
-                        padding: "12px 12px",
-                        borderRadius: 14,
-                        border: "1px solid rgba(255,255,255,0.14)",
-                        background: "rgba(0,0,0,0.14)",
-                      }}
-                    >
-                      <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.72)" }}>{String(key)}</div>
-                      <div style={{ marginTop: 8 }}>
-                        <JsonTable value={value} minWidth={720} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <JsonTable value={payload} minWidth={840} />
               )}
             </div>
           ) : null}
 
-          <div className="auth-footer" style={{ marginTop: 16 }}>
+          <div className="auth-footer ingestion-output__footer">
             <a className="auth-link" href="#/orchestrator">
               Back to Orchestrator
             </a>

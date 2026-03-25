@@ -335,6 +335,97 @@ select.auth-input option {
   }
 }
 
+/* Ingestion output (Workflow -> /mock) */
+.ingestion-output {
+  padding-top: 10px;
+}
+
+.ingestion-output__header {
+  margin-top: 10px;
+}
+
+.ingestion-output__title {
+  margin-top: 0;
+}
+
+.ingestion-output__subtitle code {
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ingestion-output__tableWrap {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.10));
+}
+
+.ingestion-output__empty {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.ingestion-output__notice {
+  margin-top: 12px;
+  padding: 12px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.ingestion-output__notice--loading {
+  border-color: rgba(59, 130, 246, 0.28);
+  background: rgba(59, 130, 246, 0.10);
+}
+
+.ingestion-output__notice--error {
+  border-color: rgba(239, 68, 68, 0.40);
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.ingestion-output__noticeTitle {
+  font-weight: 950;
+  letter-spacing: -0.01em;
+}
+
+.ingestion-output__noticeBody {
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ingestion-output__actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ingestion-output__ghostBtn {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.92);
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.ingestion-output__ghostBtn:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.ingestion-output__footer {
+  margin-top: 16px;
+}
+
 /* Responsive design for mobile */
 @media (max-width: 520px) {
   .auth-shell {
@@ -348,5 +439,10 @@ select.auth-input option {
 
   .auth-title {
     font-size: 24px;
+  }
+
+  .ingestion-output__tableWrap {
+    padding: 10px;
+    border-radius: 14px;
   }
 }
