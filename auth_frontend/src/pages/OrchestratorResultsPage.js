@@ -269,8 +269,12 @@ export default function OrchestratorResultsPage() {
   };
 
   const renderIngestionTabOutput = () => {
-    // Tolerate either {payload:{...}} or the payload as root.
+    // IMPORTANT: render exactly what backend returns from /mock (no reshaping).
+    // Backwards-compat tolerance: if some backend wraps in { payload: ... }, unwrap.
     const payloadRoot = mockData?.payload ?? mockData;
+
+    const topLevelEntries =
+      payloadRoot && typeof payloadRoot === "object" && !Array.isArray(payloadRoot) ? Object.entries(payloadRoot) : [];
 
     return (
       <div
@@ -324,7 +328,7 @@ export default function OrchestratorResultsPage() {
         {mockStatus === "success" ? (
           <div style={{ marginTop: 12 }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Rendering nested JSON as tables (objects + arrays).</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.66)" }}>Rendering /mock JSON in table form (exact keys/sections).</div>
               <button
                 type="button"
                 onClick={loadMock}
@@ -346,7 +350,31 @@ export default function OrchestratorResultsPage() {
             </div>
 
             <div style={{ marginTop: 12 }}>
-              <JsonTable value={payloadRoot} label="payload" defaultExpanded={true} minWidth={720} />
+              {!payloadRoot ? (
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)" }}>No payload returned.</div>
+              ) : typeof payloadRoot !== "object" || Array.isArray(payloadRoot) ? (
+                <JsonTable value={payloadRoot} minWidth={720} />
+              ) : (
+                <div>
+                  {topLevelEntries.map(([key, value]) => (
+                    <div
+                      key={String(key)}
+                      style={{
+                        marginTop: 12,
+                        padding: "12px 12px",
+                        borderRadius: 14,
+                        border: "1px solid rgba(255,255,255,0.14)",
+                        background: "rgba(0,0,0,0.14)",
+                      }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(255,255,255,0.72)" }}>{String(key)}</div>
+                      <div style={{ marginTop: 8 }}>
+                        <JsonTable value={value} minWidth={720} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ) : null}
