@@ -270,8 +270,8 @@ export default function OrchestratorResultsPage() {
 
   const renderIngestionTabOutput = () => {
     // IMPORTANT: render exactly what backend returns from /mock (no reshaping).
-    // Backwards-compat tolerance: if some backend wraps in { payload: ... }, unwrap.
-    const payloadRoot = mockData?.payload ?? mockData;
+    // The /mock endpoint returns a top-level JSON object; do not unwrap/transform.
+    const payloadRoot = mockData;
 
     const topLevelEntries =
       payloadRoot && typeof payloadRoot === "object" && !Array.isArray(payloadRoot) ? Object.entries(payloadRoot) : [];

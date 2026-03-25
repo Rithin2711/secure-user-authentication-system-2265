@@ -161,8 +161,8 @@ export default function JsonTable({ value, label, defaultExpanded = true, minWid
         );
       }
 
-      const columns = unionKeysForObjectArray(items);
-      const orderedColumns = columns.sort((a, b) => a.localeCompare(b));
+      // Preserve first-seen key order across the array (do NOT sort), to match backend structure.
+      const orderedColumns = unionKeysForObjectArray(items);
 
       return (
         <div style={tableShellStyle({ minWidth: Math.max(minWidth, 560) })}>
@@ -200,7 +200,9 @@ export default function JsonTable({ value, label, defaultExpanded = true, minWid
     }
 
     // Object (Key/Value table)
-    const entries = Object.entries(value).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    // IMPORTANT: preserve insertion order of keys as returned by backend (do NOT sort),
+    // so UI matches the response structure/order shown in the reference.
+    const entries = Object.entries(value);
     const rowBgFor = (idx) => (idx % 2 === 0 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.01)");
 
     if (entries.length === 0) {
