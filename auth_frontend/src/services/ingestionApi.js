@@ -68,23 +68,23 @@ async function apiFetchText(path, { method = "GET", headers, body, baseUrl, allo
 }
 
 // PUBLIC_INTERFACE
-// export async function fetchMockRequiredIngestionFields() {
-//   /**
-//    * Fetch required ingestion fields from the backend mock endpoint.
-//    *
-//    * Endpoint:
-//    * - GET {REACT_APP_BACKEND_URL || REACT_APP_API_BASE}/mock
-//    *
-//    * @returns {Promise<any>} Parsed JSON response from /mock (unmodified)
-//    */
-//   const res = await apiFetchJson("mock", { method: "GET", baseUrl: ENDPOINT, allowRelative: false });
+export async function fetchMockRequiredIngestionFields() {
+  /**
+   * Fetch required ingestion fields from the backend mock endpoint.
+   *
+   * Endpoint:
+   * - GET {REACT_APP_BACKEND_URL || REACT_APP_API_BASE}/mock
+   *
+   * @returns {Promise<any>} Parsed JSON response from /mock (unmodified)
+   */
+  const res = await apiFetchJson("mock", { method: "GET", baseUrl: ENDPOINT, allowRelative: false });
 
-//   if (!res.ok) {
-//     throw new Error(res.error?.message || "Unable to load /mock payload.");
-//   }
+  if (!res.ok) {
+    throw new Error(res.error?.message || "Unable to load /mock payload.");
+  }
 
-//   return res.data;
-// }
+  return res.data;
+}
 
 // PUBLIC_INTERFACE
 export async function fetchDateTimeMissingErrorMessage() {
