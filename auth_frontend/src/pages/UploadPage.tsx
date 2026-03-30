@@ -191,7 +191,7 @@ export default function UploadPage(): React.ReactElement {
   };
 
   return (
-    <main className="auth-page auth-page--wide" aria-label="Upload page">
+    <main className="auth-page auth-page--wide w-full" aria-label="Upload page">
       {/* Top bar */}
       <div style={topBarStyle} role="banner" aria-label="Dashboard header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>

@@ -1,7 +1,7 @@
 /* Tailwind CSS v4 - single import directive */
 @import "tailwindcss";
 
-/* ─── Custom CSS variables (design tokens) ──────────────────────────────── */
+/* ─── Custom CSS variables (design tokens) ──────────────────────────────────── */
 :root {
   /* Typography */
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -41,7 +41,7 @@
   --auth-shadow: 0 18px 60px rgba(0,0,0,0.45);
 }
 
-/* ─── Reset / base ───────────────────────────────────────────────────────── */
+/* ─── Reset / base ──────────────────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -63,7 +63,7 @@ body {
   color: var(--color-text);
 }
 
-/* ─── Auth shell ─────────────────────────────────────────────────────────── */
+/* ─── Auth shell ──────────────────────────────────────────────────────────────── */
 .auth-shell {
   position: relative;
   display: flex;
@@ -93,7 +93,7 @@ body {
   pointer-events: none;
 }
 
-/* ─── Auth page containers ───────────────────────────────────────────────── */
+/* ─── Auth page containers ──────────────────────────────────────────────────── */
 .auth-page {
   width: 100%;
   max-width: 460px;
@@ -108,7 +108,7 @@ body {
   box-sizing: border-box;
 }
 
-/* ─── Auth card ──────────────────────────────────────────────────────────── */
+/* ─── Auth card ─────────────────────────────────────────────────────────────── */
 .auth-card {
   width: 100%;
   text-align: left;
@@ -136,7 +136,7 @@ body {
   padding: 0 8px;
 }
 
-/* ─── Typography ─────────────────────────────────────────────────────────── */
+/* ─── Typography ────────────────────────────────────────────────────────────── */
 .auth-title {
   margin: 0;
   font-size: 26px;
@@ -152,7 +152,7 @@ body {
   color: var(--auth-muted);
 }
 
-/* ─── Form elements ──────────────────────────────────────────────────────── */
+/* ─── Form elements ─────────────────────────────────────────────────────────── */
 .auth-form {
   margin-top: 18px;
   display: flex;
@@ -202,7 +202,7 @@ select.auth-input option {
   background: rgba(255,255,255,0.075);
 }
 
-/* ─── Buttons ────────────────────────────────────────────────────────────── */
+/* ─── Buttons ─────────────────────────────────────────────────────────────── */
 .auth-button {
   margin-top: 8px;
   width: 100%;
@@ -227,6 +227,40 @@ select.auth-input option {
   box-shadow: none;
 }
 
+/* ─── Login button (solid blue, dimmer on hover) ──────────────────────────── */
+/*
+ * Used exclusively on the LoginPage.
+ * Background: solid #3b82f6 (blue-500), white text.
+ * On hover: brightness reduced to 0.85 — visually darker blue, text stays white.
+ */
+.login-btn {
+  background-color: #3b82f6;
+  border: none;
+  font-family: var(--font-sans);
+  box-shadow: 0 8px 20px rgba(59,130,246,0.32);
+  transition: filter 0.15s ease, transform 0.08s ease;
+}
+
+.login-btn:hover:not(:disabled) {
+  filter: brightness(0.85);
+}
+
+.login-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  filter: brightness(0.80);
+}
+
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ─── Muted label helper ──────────────────────────────────────────────────── */
+.auth-muted-label {
+  color: var(--auth-muted);
+}
+
 /* ─── Links & footer ─────────────────────────────────────────────────────── */
 .auth-row {
   display: flex;
@@ -249,7 +283,7 @@ select.auth-input option {
   color: var(--auth-muted);
 }
 
-/* ─── Messages ───────────────────────────────────────────────────────────── */
+/* ─── Messages ─────────────────────────────────────────────────────────────── */
 .auth-message {
   margin: 10px 0 0;
   font-size: 13px;
@@ -258,7 +292,7 @@ select.auth-input option {
 .auth-message.error   { color: rgba(255,210,210,0.95); }
 .auth-message.success { color: rgba(193,255,220,0.95); }
 
-/* ─── Ingestion output ───────────────────────────────────────────────────── */
+/* ─── Ingestion output ──────────────────────────────────────────────────────── */
 .ingestion-output            { padding-top: 10px; }
 .ingestion-output__header    { margin-top: 10px; }
 .ingestion-output__title     { margin-top: 0; }
@@ -271,7 +305,7 @@ select.auth-input option {
   background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.10));
 }
 
-/* ─── Responsive ─────────────────────────────────────────────────────────── */
+/* ─── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 520px) {
   .auth-shell       { padding: 34px 14px; }
   .auth-card        { padding: 22px 18px; border-radius: 16px; }

@@ -247,6 +247,36 @@ select.auth-input option {
   filter: brightness(1.03);
 }
 
+/* Login button — solid blue background, white text, dimmer on hover */
+.login-btn {
+  background-color: #3b82f6;
+  border: none;
+  font-family: var(--font-sans, 'Inter', ui-sans-serif, system-ui, sans-serif);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.32);
+  transition: filter 0.15s ease, transform 0.08s ease;
+}
+
+/* Reduce brightness on hover — gives a darker-blue appearance */
+.login-btn:hover:not(:disabled) {
+  filter: brightness(0.85);
+}
+
+.login-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  filter: brightness(0.80);
+}
+
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Muted label helper used by LoginPage */
+.auth-muted-label {
+  color: var(--auth-muted);
+}
+
 .auth-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
